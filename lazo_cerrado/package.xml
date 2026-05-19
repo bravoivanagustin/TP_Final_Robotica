@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>lazo_cerrado</name>
+  <version>0.0.0</version>
+  <description>Módulo 2 del TP Final: controlador a lazo cerrado y seguimiento de trayectoria para el robot omnidireccional Mecanum. Implementa ley P por DOF en frame body, pursuit-based goal selection sobre una trayectoria cuadrada 2×2 m con orientación radial saliente, y feedback vía TF map → base_link.</description>
+
+  <maintainer email="ibravo@pluszero.app">agustinbravo</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>robmovil_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>angles</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
