@@ -10,8 +10,6 @@ Este mismo necesita revisión pero es un buen primer avance
 
 ### 19/05/2026
 
-/init con Claude Code, por ahora vamos a tener CLAUDE.md, a mi me gustaria tener una rule por cada modulo a implementar, una skill para aprovechar el codigo de los talleres con el otro robot y una sesion para cada modulo y una especialista en el proyecto en si. 
-
 Trabajo sobre `modelo_holonomico` para alinearlo con la consigna del TP. Lo hecho hoy:
 
 - **Renombre completo** dentro del paquete: `pioneer_odometry` → `mecanum_odometry` (clase, archivos en `modelo_holonomico/src/`, ejecutable en `CMakeLists.txt`, nombre del nodo ROS). El paquete sigue llamándose `modelo_holonomico`.
@@ -43,4 +41,3 @@ Implementación inicial del módulo 2 (`lazo_cerrado`) en una sesión guiada por
 - Agregar displays `Path` y `Pose` a `coppeliaSim/tpfinal.rviz` para `/desired_path`, `/real_path` y `/goal_pose`.
 
 Para retomar el módulo 2: leer `docs/02_lazo_cerrado.md`.
-
