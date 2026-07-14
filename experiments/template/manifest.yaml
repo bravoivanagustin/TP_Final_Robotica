@@ -1,0 +1,54 @@
+# Manifiesto de una corrida experimental.
+# Los campos marcados con "# auto" los rellena scripts/new_experiment.sh; el resto se completa
+# a mano ANTES de correr scripts/run_experiment.sh.
+
+slug:              # auto — kebab/snake corto, ej. strafing_canary
+fecha:             # auto — ISO 8601 (YYYY-MM-DD)
+git_sha:           # auto — HEAD short SHA al momento de crear la corrida
+git_dirty:         # auto — true si había cambios sin commitear
+descripcion:       # auto (desde CLI) — 1–2 líneas sobre qué se probó y por qué
+
+# Backend: nodos que exponen la odometría, el EKF y demás soportes del sim.
+# run_experiment.sh lanza `ros2 launch <paquete> <archivo> <args>` en background.
+launch:
+  paquete:         # ej. modelo_holonomico
+  archivo:         # ej. odometry.launch.py
+  args:            # dict k:=v que se pasan al launch; strings/números/booleans
+    use_sim_time: true
+
+# Trayectoria: descripción de la referencia. La usan tanto plot_run.py (para overlays y
+# tracking-error) como publish_cmd_vel.py cuando cmd_source.tipo == open_loop_twist.
+trayectoria:
+  tipo:            # strafing | circular | constante | cuadrado_2m | manual_teleop
+  parametros: {}   # ej. open-loop: {vy: 0.2, duracion_s: 5.0}
+                   #     closed-loop: {lado: 2.0, kp_xy: 0.8, kp_yaw: 1.5}
+
+# Driver: quién publica /robot/cmd_vel.
+#   open_loop_twist    → run_experiment.sh lanza scripts/publish_cmd_vel.py (usa trayectoria).
+#   closed_loop_launch → run_experiment.sh lanza `ros2 launch <paquete> <archivo> <args>`.
+#   manual             → run_experiment.sh espera Enter del usuario.
+cmd_source:
+  tipo:            # open_loop_twist | closed_loop_launch | manual
+  paquete:         # sólo para closed_loop_launch, ej. lazo_cerrado
+  archivo:         # sólo para closed_loop_launch, ej. lazo_cerrado.launch.py
+  args: {}         # sólo para closed_loop_launch, ej. {kp_xy: 0.8, kp_yaw: 1.5}
+
+# Watchdog global: hard upper bound para run_experiment.sh (segundos).
+# Si el driver no termina antes, run_experiment mata todo y flushea el bag.
+duracion_maxima_s: 120
+
+# Topics que rosbag2 debe grabar (record.sh los lee de acá).
+# Para módulo 2 sumar /robot/trajectory /goal_pose /real_path.
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /tf
+  - /tf_static
+
+notas_resumen: |   # observaciones cortas — las extensas van a notes.md
+

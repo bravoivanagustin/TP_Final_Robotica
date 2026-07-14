@@ -1,1 +1,7 @@
 .claude/
+
+# Experiments: los bags son binarios grandes; el manifest, notes y plots sí se versionan.
+experiments/*/bag/
+*.mcap
+*.db3
+scripts/__pycache__

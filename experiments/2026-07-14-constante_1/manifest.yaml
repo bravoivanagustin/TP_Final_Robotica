@@ -1,0 +1,48 @@
+# Manifiesto de una corrida experimental.
+# Los campos marcados con "# auto" los rellena scripts/new_experiment.sh; el resto se completa
+# a mano ANTES de correr scripts/run_experiment.sh.
+
+slug: constante_1
+fecha: 2026-07-13
+git_sha: 5451afa
+git_dirty: true
+descripcion: combinación lenta vx+vy+wz por 5 s
+
+# Backend: nodos que exponen la odometría, el EKF y demás soportes del sim.
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+# Trayectoria: combinación conservadora de los 3 DoF simultáneos.
+# 5 sim-s → ~0.25 m en cada eje del cuerpo y ~14° de giro. Bien lejos de los postes.
+# El plot xy_path muestra un arco corto porque el yaw va rotando durante el movimiento.
+trayectoria:
+  tipo: constante
+  parametros:
+    vx: 0.1
+    vy: 0.1
+    wz: 0.1
+    duracion_s: 10.0
+
+cmd_source:
+  tipo: open_loop_twist
+
+duracion_maxima_s: 15
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /tf
+  - /tf_static
+
+notas_resumen: |
+  Estrés suave del modelo con los 3 DoF activos. Chequeo cualitativo: la trayectoria
+  debe arrancar en (0,0), avanzar diagonalmente en cuadrante (+x, +y) mientras θ crece
+  lentamente, sin comportamientos raros ni saltos.

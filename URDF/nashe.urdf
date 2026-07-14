@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot name="youBot">
-    <link name="base_link_gt">
+    <link name="base_link">
         <inertial>
             <origin rpy="-1.570796 -1.570796 0.000000" xyz="-2.000000 2.000000 0.095316" />
             <inertia izz="0.24000000208616" iyz="0.0" ixx="2.2400000691414" iyy="1.1200000345707" ixz="0.0" ixy="0.0" />
@@ -168,7 +168,7 @@
     </link>
     <joint type="continuous" name="rollingJoint_rr">
         <axis xyz="0 0 1" />
-        <parent link="base_link_gt" />
+        <parent link="base_link" />
         <child link="intermediateLink_rr" />
         <origin xyz="-1.825000 1.825000 0.049935" rpy="-0.001006 1.570796 0.000000" />
     </joint>
@@ -233,7 +233,7 @@
     </link>
     <joint type="continuous" name="rollingJoint_rl">
         <axis xyz="0 0 1" />
-        <parent link="base_link_gt" />
+        <parent link="base_link" />
         <child link="intermediateLink_rl" />
         <origin xyz="-2.175000 1.825000 0.049935" rpy="-0.001006 1.570796 0.000000" />
     </joint>
@@ -299,7 +299,7 @@
     <joint type="revolute" name="Joint">
         <axis xyz="0 0 1" />
         <limit effort="2.5" upper="0.17453292012215" velocity="6.2831854820251" lower="-0.17453292012215" />
-        <parent link="base_link_gt" />
+        <parent link="base_link" />
         <child link="Rectangle0" />
         <origin xyz="-2.000335 2.228000 0.049935" rpy="-1.570796 3.141593 -3.140587" />
     </joint>

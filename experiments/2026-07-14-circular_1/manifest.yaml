@@ -1,0 +1,48 @@
+# Manifiesto de una corrida experimental.
+# Los campos marcados con "# auto" los rellena scripts/new_experiment.sh; el resto se completa
+# a mano ANTES de correr scripts/run_experiment.sh.
+
+slug: circular_1
+fecha: 2026-07-13
+git_sha: 5451afa
+git_dirty: true
+descripcion: circular horario R=0.5 m, una vuelta completa
+
+# Backend: nodos que exponen la odometría, el EKF y demás soportes del sim.
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+# Trayectoria circular: v_x=0.15 avanzando, w_z=-0.3 girando en sentido horario.
+# Radio R = vx/|wz| = 0.5 m. Período T = 2π/|wz| ≈ 20.9 s.
+# Con θ_0 = 0, el centro del círculo queda en (0, -R) = (0, -0.5); trayectoria en
+# x ∈ [-0.5, 0.5], y ∈ [-1.0, 0]. plot_run.py superpone el círculo analítico como referencia.
+trayectoria:
+  tipo: circular
+  parametros:
+    vx: 0.15
+    wz: -0.3
+    duracion_s: 22.0
+
+cmd_source:
+  tipo: open_loop_twist
+
+# Watchdog wall-clock — 22 sim-s + margen amplio por si el sim va lento.
+duracion_maxima_s: 60
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /tf
+  - /tf_static
+
+notas_resumen: |
+  Círculo horario de R=0.5 m. Chequeo: la trayectoria odom debe pegarse al círculo
+  analítico (línea punteada en xy_path.png) con < 5 cm de error acumulado en 1 vuelta.

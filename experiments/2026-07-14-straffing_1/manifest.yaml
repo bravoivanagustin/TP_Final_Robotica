@@ -1,0 +1,45 @@
+# Manifiesto de una corrida experimental.
+# Los campos marcados con "# auto" los rellena scripts/new_experiment.sh; el resto se completa
+# a mano ANTES de correr scripts/run_experiment.sh.
+
+slug: straffing_1
+fecha: 2026-07-13
+git_sha: 5451afa
+git_dirty: true
+descripcion: strafing puro vy negativo por 4 s
+
+# Backend: nodos que exponen la odometría, el EKF y demás soportes del sim.
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+# Trayectoria: v_y negativo — el robot se desplaza lateralmente hacia -y.
+# Distancia esperada: 0.3 m/s × 4 s = 1.2 m en -y. v_x y w_z deben quedar ≈ 0.
+trayectoria:
+  tipo: strafing
+  parametros:
+    vy: -0.3
+    duracion_s: 4.0
+
+# Driver: open-loop, publish_cmd_vel.py arma el Twist desde trayectoria.
+cmd_source:
+  tipo: open_loop_twist
+
+# Watchdog wall-clock — con margen para simSpeed bajo del sim.
+duracion_maxima_s: 15
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /tf
+  - /tf_static
+
+notas_resumen: |
+  Canary de strafing puro. Chequeo: |y_final| ≈ 1.2 m, x_final ≈ 0, θ_final ≈ 0.
