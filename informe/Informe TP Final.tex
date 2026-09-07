@@ -1,0 +1,209 @@
+\documentclass[11pt,a4paper]{article}
+
+% ================= PAQUETES =================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={TP Final - Robótica Móvil},
+}
+
+% ================= MARCADORES DE TAREA PENDIENTE =================
+% Uso: \TODO{texto} para marcar qué falta escribir/mostrar en esa sección.
+% Al redactar el contenido real, reemplazar/borrar el \TODO correspondiente.
+\definecolor{todocolor}{RGB}{180,0,0}
+\newcommand{\TODO}[1]{\textcolor{todocolor}{\textbf{[PENDIENTE]} #1}}
+\newenvironment{tareas}{\begin{itemize}\setlength{\itemsep}{2pt}}{\end{itemize}}
+
+% ================= CARÁTULA =================
+\begin{document}
+
+\begin{titlepage}
+\centering
+{\includegraphics[width=0.2\textwidth]{UBA.png}\par}
+\vspace{1cm}
+{\bfseries\LARGE Universidad de Buenos Aires \par}
+\vspace{0.5cm}
+{\scshape\Large Facultad de Ciencias Exactas y Naturales \par}
+\vspace{3cm}
+{\scshape\Huge Seguimiento de trayectoria a lazo cerrado basado en EKF para un robot omnidireccional \par}
+\vspace{1cm}
+{\scshape\Large Robótica Móvil -- 2\textsuperscript{do} Cuatrimestre 2025 \par}
+\vspace{3cm}
+{\itshape\Large Trabajo Práctico Final \par}
+\vfill
+{\Large
+\begin{tabular}{ll}
+\textbf{Alumno} & \textbf{L.U.} \\[0.4em]
+Iván Agustín Bravo          & \TODO{completar L.U.}  \\
+Pablo Benavente Jacyszyn & 1035/22 \\
+\end{tabular}
+\par}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Introducción}
+% Consigna: "Se debe introducir el problema que se está abarcando, dando
+% motivaciones y aplicaciones del mismo. Enunciar el enfoque propuesto
+% para su resolución."
+\begin{tareas}
+    \item \TODO{Presentar el problema: robot móvil omnidireccional (Mecanum) que debe seguir trayectorias con precisión.}
+    \item \TODO{Motivación y aplicaciones (consigna menciona transporte de carga; capacidad de moverse en cualquier dirección sin reorientarse primero).}
+    \item \TODO{Enunciar el enfoque propuesto: modelo cinemático Mecanum (Taheri 2015) $\to$ odometría $\to$ control P + seguimiento pursuit-based $\to$ localización EKF con landmarks $\to$ seguimiento cerrado usando la pose EKF.}
+    \item \TODO{Adelantar brevemente el alcance logrado (qué de los 3 módulos quedó funcional, qué experimentos se hicieron) para orientar al lector.}
+\end{tareas}
+
+% =====================================================================
+\section{Modelo Cinemático}
+% Consigna: presentar particularidades de la plataforma, parámetros,
+% metodología de odometría, y experimentos que validen el modelo.
+\subsection{Plataforma y parámetros}
+\begin{tareas}
+    \item \TODO{Describir la plataforma Mecanum: 4 ruedas fijas, rodillos a 45°, dimensiones 350mm x 350mm, radio de rueda 50mm, encoder de 500 ticks/rev (absoluto, signo según sentido de giro).}
+    \item \TODO{Tabla de parámetros efectivamente usados en el código (\texttt{modelo\_holonomico/mecanum\_odometry.cpp}, líneas 14-16): \texttt{WHEEL\_L = 0.175 m}, \texttt{WHEEL\_RADIUS = 0.05 m}, \texttt{ENCODER\_TICKS = 500}.}
+    \item \TODO{Aclarar que estos valores están hardcodeados y no como \texttt{declare\_parameter} (mencionar como decisión de diseño o como pendiente, según se resuelva antes de entregar).}
+\end{tareas}
+
+\subsection{Cinemática inversa (control de ruedas)}
+\begin{tareas}
+    \item \TODO{Plantear el modelo del paper "Kinematic Model Of Four Mecanum Wheeled Mobile Robot" (ecuación 20) que mapea $[v_x, v_y, \omega]$ del \texttt{geometry\_msgs/Twist} recibido en \texttt{/robot/cmd\_vel} a las 4 velocidades de rueda.}
+    \item \TODO{Detallar la publicación resultante en los 4 tópicos \texttt{/robot/\{front\_left,front\_right,rear\_left,rear\_right\}\_wheel/cmd\_vel}.}
+\end{tareas}
+
+\subsection{Cinemática directa (odometría)}
+\begin{tareas}
+    \item \TODO{Plantear el modelo inverso (ecuación 21) que estima velocidad lineal/angular del robot a partir de los deltas de encoder.}
+    \item \TODO{Explicar la integración de los deltas en frame \emph{body} (incluyendo \texttt{dyb}, el desplazamiento lateral/\emph{strafing} propio de un robot holonómico) hacia el frame inercial \texttt{odom}.}
+    \item \TODO{Describir el nodo \texttt{mecanum\_odometry\_node}: suscripción a \texttt{/robot/encoders}, publicación de TF \texttt{odom→base\_link} y de \texttt{nav\_msgs/Odometry} en \texttt{/robot/odometry}, frecuencia de publicación (\textasciitilde100 Hz).}
+\end{tareas}
+
+\subsection{Experimentos}
+\begin{tareas}
+    \item \TODO{Gráfico: velocidades lineales y angular \emph{comandadas} vs. velocidades \emph{reales} ejercidas por el robot (comparación).}
+    \item \TODO{Gráfico: pose estimada por odometría vs. pose real (ground truth \texttt{odom→base\_link\_gt}).}
+    \item \TODO{Usar/adaptar los scripts de \texttt{scripts/plot\_run.py} (\texttt{odom\_vs\_cmd}, \texttt{xy\_path}) si ya están disponibles en la rama de trabajo; si no, correr los experimentos correspondientes.}
+    \item \TODO{Analizar el error observado y su causa (deslizamiento, discretización de encoders, etc.).}
+\end{tareas}
+
+% =====================================================================
+\section{Control a lazo cerrado y seguimiento de trayectorias}
+\subsection{Controlador Proporcional}
+\begin{tareas}
+    \item \TODO{Diagrama de lazo cerrado: setpoint (pose objetivo) $\to$ cálculo de error en frame \emph{body} $\to$ controlador P $\to$ velocidades $(v_x, v_y, \omega)$ $\to$ planta (robot) $\to$ realimentación por odometría.}
+    \item \TODO{Presentar las ecuaciones del controlador: error rotado a body frame ($e_{x,b} = \cos\theta \cdot e_{x,w} + \sin\theta \cdot e_{y,w}$, $e_{y,b} = -\sin\theta \cdot e_{x,w} + \cos\theta \cdot e_{y,w}$) y ley de control $v_x = k_{p,xy} \cdot e_{x,b}$, $v_y = k_{p,xy} \cdot e_{y,b}$, $\omega = k_{p,yaw} \cdot e_\theta$.}
+    \item \TODO{Justificar por qué se puede controlar cada GDL de forma independiente (robot holonómico, no hay restricción no-holonómica).}
+    \item \TODO{Mencionar que actualmente no hay saturación de velocidades en la ley de control (evaluar si agregar clamp antes de entregar, o justificar por qué no hace falta).}
+\end{tareas}
+
+\subsection{Trayectoria cuadrada y \emph{pursuit-based following}}
+\begin{tareas}
+    \item \TODO{Definir la trayectoria cuadrada de 2 m de lado (vértices $(\pm2,\pm2)$ en frame \texttt{map}) y la orientación "opuesta al centro" (yaw radial saliente $\theta = \mathrm{atan2}(y,x)$).}
+    \item \TODO{Explicar la discretización en waypoints (paso de 0.05 m, \textasciitilde321 puntos) generada por el nodo \texttt{trajectory\_generator}.}
+    \item \TODO{Explicar el método pursuit-based: cursor monotónico sobre la lista de waypoints, \texttt{lookahead\_distance = 0.30 m}, criterio de avance al siguiente punto (\texttt{position\_tolerance = 0.05 m}, \texttt{yaw\_tolerance = 0.05 rad}).}
+    \item \TODO{Describir el nodo \texttt{trajectory\_follower}: feedback vía TF \texttt{map→base\_link} (parametrizable a otro frame), publicación periódica en \texttt{/robot/cmd\_vel} (\texttt{control\_rate\_hz = 30 Hz}), y tópicos de depuración \texttt{/goal\_pose} y \texttt{/real\_path}.}
+\end{tareas}
+
+\subsection{Experimentos}
+\begin{tareas}
+    \item \TODO{Barrido de constantes $k_{p,xy}$ y $k_{p,yaw}$ (al menos 2-3 valores cada una): gráficos de pose real vs. setpoint para cada corrida.}
+    \item \TODO{Gráfico de velocidades lineales/angular asignadas durante el experimento.}
+    \item \TODO{Análisis de los comportamientos observados (oscilación, tiempo de convergencia, overshoot) y justificación de la elección final de constantes (valores actuales por defecto: $k_{p,xy}=0.8$, $k_{p,yaw}=1.5$; a confirmar/ajustar según resultados).}
+    \item \TODO{Correr y documentar estos experimentos: el framework de automatización (\texttt{scripts/run\_experiment.sh}, \texttt{scripts/plot\_run.py}) existe en la rama \texttt{origin/main} pero los barridos de Kp todavía no están corridos/documentados.}
+\end{tareas}
+
+% =====================================================================
+\section{Localización basada en EKF}
+\subsection{Detección de landmarks (postes)}
+\begin{tareas}
+    \item \TODO{Describir el nodo \texttt{landmark\_detector\_node}: suscripción a \texttt{/robot/front\_laser/scan}.}
+    \item \TODO{Explicar el método de clusterización: agrupamiento secuencial por distancia entre puntos consecutivos (\texttt{cluster\_distance\_threshold = 0.15 m}), filtros de tamaño de cluster (\texttt{min\_cluster\_points = 2}, \texttt{max\_cluster\_points = 30}).}
+    \item \TODO{Explicar el cálculo del centroide de cada cluster y su publicación como $(r, \varphi)$ en \texttt{/landmarks} (\texttt{robmovil\_msgs/LandmarkArray}), en el frame de \texttt{base\_link} (transformación \texttt{front\_laser→base\_link} vía TF).}
+    \item \TODO{Mencionar la visualización de marcadores en \texttt{/landmark\_markers} (RViz2).}
+\end{tareas}
+
+\subsection{Modelo del EKF}
+\begin{tareas}
+    \item \TODO{Definir el estado $\vec{x} = [p_x, p_y, \theta]^T$ (frame \texttt{map}).}
+    \item \TODO{Definir la entrada de control $\vec{u} = [d_{xb}, d_{yb}, d\theta]^T$ (deltas de odometría en frame body, obtenidos de \texttt{/robot/odometry}) y el ruido de actuador $\vec{w}$.}
+    \item \TODO{Definir la medición $\vec{z} = [r, \varphi]^T$ por landmark y el ruido de sensor $\vec{v}$.}
+    \item \TODO{Modelo de movimiento $f(\vec{x},\vec{u},\vec{w})$: $p_x' = p_x + d_{xb}\cos\theta - d_{yb}\sin\theta$, $p_y' = p_y + d_{xb}\sin\theta + d_{yb}\cos\theta$, $\theta' = \theta + d\theta$, y su Jacobiano $J_f$ ($3\times3$).}
+    \item \TODO{Modelo de sensado $h(\vec{x},\vec{v})$ por landmark $i$ en posición $(m_x,m_y)$ conocida: $r = \sqrt{(m_x-p_x)^2+(m_y-p_y)^2}$, $\varphi = \mathrm{atan2}(m_y-p_y, m_x-p_x) - \theta$, y su Jacobiano $J_h$ ($2\times3$).}
+    \item \TODO{Referenciar/citar el desarrollo completo ya hecho en \texttt{docs/03b\_ekf\_modelo\_matematico.md} y trasladarlo formalmente al informe.}
+    \item \TODO{Aclarar que la implementación es propia con Eigen (no se usó la librería EKFilter mencionada en el anexo de la consigna) -- justificar la decisión.}
+\end{tareas}
+
+\subsection{Matrices de covarianza}
+\begin{tareas}
+    \item \TODO{Presentar y justificar $Q = \mathrm{diag}(0.15^2, 0.15^2, 0.15^2)$ (ruido de proceso) y $R = \mathrm{diag}(0.05^2, 0.03^2)$ (ruido de medición: rango y bearing).}
+    \item \TODO{Justificar por qué la incertidumbre de predicción debe ser mayor que la de medición (relación $Q/R$: \textasciitilde9x en posición, \textasciitilde25x en ángulo) para que la corrección con landmarks pese más.}
+    \item \TODO{Mencionar covarianza inicial $P_0 = I \cdot 0.01$ y de dónde se toma la pose inicial (TF \texttt{map→base\_link}).}
+\end{tareas}
+
+\subsection{Nodo EKF y asociación de datos}
+\begin{tareas}
+    \item \TODO{Describir el nodo \texttt{ekf\_localizer\_node}: mapa de postes conocido a priori desde \texttt{/posts} (frame \texttt{map}, no construido online -- a diferencia de lo visto en la cursada), predicción con \texttt{/robot/odometry} como control, corrección con \texttt{/landmarks}.}
+    \item \TODO{Explicar la asociación de datos (\emph{data association}): vecino más cercano (\emph{nearest-neighbor}) con umbral de gating \texttt{association\_max\_dist = 0.6 m}.}
+    \item \TODO{Explicar el manejo de la singularidad de $J_h$ cuando $r \to 0$ (se descartan observaciones con \texttt{range < 0.2 m}).}
+    \item \TODO{Detallar la publicación de salida: TF \texttt{map→base\_link\_ekf} y \texttt{nav\_msgs/Odometry} con covarianza en \texttt{/robot/odometry\_ekf}.}
+\end{tareas}
+
+\subsection{Experimentos}
+\begin{tareas}
+    \item \TODO{Mover el robot manualmente con velocidades constantes (sin control de trayectoria) y registrar la pose a lo largo del tiempo.}
+    \item \TODO{Comparar: pose EKF vs. pose por odometría pura vs. pose real (ground truth). Gráfico de trayectorias superpuestas y/o error en el tiempo.}
+    \item \TODO{Cuantificar la mejora (o no) de precisión del EKF respecto a la odometría sola.}
+    \item \TODO{Este experimento todavía no fue corrido/documentado -- pendiente antes de la entrega.}
+\end{tareas}
+
+% =====================================================================
+\section{Seguimiento de trayectorias a lazo cerrado utilizando localización basada en EKF}
+\begin{tareas}
+    \item \TODO{Explicar la integración: el \texttt{trajectory\_follower} pasa a usar como feedback la transformación \texttt{map→base\_link\_ekf} en lugar de \texttt{map→base\_link} (parámetro \texttt{base\_frame}).}
+    \item \TODO{Presentar el comportamiento del sistema completo (seguimiento + localización EKF) siguiendo la trayectoria cuadrada de 2 m.}
+    \item \TODO{Si fue necesario reajustar $k_{p,xy}$/$k_{p,yaw}$ para este caso, documentar los experimentos de reajuste y la justificación.}
+    \item \TODO{Análisis comparativo: trayectoria efectivamente realizada por el robot vs. trayectoria requerida vs. ground truth.}
+    \item \TODO{Capturas de RViz2 mostrando el elipsoide de covarianza del EKF en distintas porciones del recorrido (al menos en un tramo recto y en un vértice/giro).}
+\end{tareas}
+
+% =====================================================================
+\section{Sistema desarrollado}
+\begin{tareas}
+    \item \TODO{Listar los paquetes ROS2 implementados: \texttt{modelo\_holonomico} (\texttt{mecanum\_odometry\_node}), \texttt{lazo\_cerrado} (\texttt{trajectory\_generator}, \texttt{trajectory\_follower}), \texttt{ekf\_localizer} (\texttt{landmark\_detector\_node}, \texttt{ekf\_localizer\_node}), \texttt{robmovil\_msgs}.}
+    \item \TODO{Diagrama general de tópicos/mensajes del sistema completo (extender el diagrama de la consigna con los nodos propios y sus tópicos: \texttt{/robot/odometry}, \texttt{/landmarks}, \texttt{/landmark\_markers}, \texttt{/robot/odometry\_ekf}, \texttt{/goal\_pose}, \texttt{/real\_path}).}
+    \item \TODO{Mencionar el URDF (\texttt{URDF/nashe.urdf}) usado para la visualización del robot en RViz2.}
+    \item \TODO{Instrucciones de ejecución: cómo levantar la simulación en CoppeliaSim, orden de lanzamiento de los launch files de cada módulo, cómo correr un experimento con \texttt{scripts/run\_experiment.sh} y generar los gráficos con \texttt{scripts/plot\_run.py}.}
+\end{tareas}
+
+% =====================================================================
+\section{Conclusiones}
+\begin{tareas}
+    \item \TODO{Síntesis de los resultados obtenidos en cada módulo, a partir de los experimentos ya documentados en las secciones anteriores.}
+    \item \TODO{Problemas encontrados durante el desarrollo (por ejemplo: parámetros geométricos hardcodeados en \texttt{modelo\_holonomico}, ausencia de saturación de velocidad en el controlador P, singularidad de $J_h$ en $r\to0$, ausencia de mocap/ground-truth externo más allá del provisto por el simulador) y cómo se resolvieron o quedaron pendientes.}
+    \item \TODO{Mejoras futuras propuestas (ej.: llevar constantes a parámetros ROS2 declarados, saturación/limitación de velocidades, mejorar la asociación de datos, agregar más landmarks o filtrar outliers del clustering, etc.).}
+\end{tareas}
+
+% =====================================================================
+\appendix
+\section{Anexo: parámetros utilizados}
+\begin{tareas}
+    \item \TODO{(Opcional) Tabla resumen de todas las constantes/parámetros usados en cada nodo, a modo de referencia rápida (geometría Mecanum, ganancias del controlador P, umbrales de clustering, matrices Q/R del EKF, etc.).}
+\end{tareas}
+
+\end{document}
