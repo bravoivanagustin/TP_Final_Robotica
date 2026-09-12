@@ -63,12 +63,14 @@ Pablo Benavente Jacyszyn & 1035/22 \\
 % Consigna: "Se debe introducir el problema que se está abarcando, dando
 % motivaciones y aplicaciones del mismo. Enunciar el enfoque propuesto
 % para su resolución."
-\begin{tareas}
-    \item \TODO{Presentar el problema: robot móvil omnidireccional (Mecanum) que debe seguir trayectorias con precisión.}
-    \item \TODO{Motivación y aplicaciones (consigna menciona transporte de carga; capacidad de moverse en cualquier dirección sin reorientarse primero).}
-    \item \TODO{Enunciar el enfoque propuesto: modelo cinemático Mecanum (Taheri 2015) $\to$ odometría $\to$ control P + seguimiento pursuit-based $\to$ localización EKF con landmarks $\to$ seguimiento cerrado usando la pose EKF.}
-    \item \TODO{Adelantar brevemente el alcance logrado (qué de los 3 módulos quedó funcional, qué experimentos se hicieron) para orientar al lector.}
-\end{tareas}
+
+Los robots móviles omnidireccionales son aquellos que tienen la capacidad de desplazarse en cualquier dirección del plano sin la necesidad de reorientarse previamente. Esto los diferencia de los robots con ruedas convencionales que, al tener sus ruedas alineadas, solo pueden moverse hacia adelante o hacia atrás y deben girar para cambiar de dirección.
+
+En este trabajo se propone lograr que un robot omnidireccional de cuatro ruedas Mecanum pueda seguir una trayectoria de referencia de manera precisa. Para ello, se implementan distintos contenidos desarrollados a lo largo de la cursada de la materia, utilizando el sistema ROS2 y el simulador CoppeliaSim.
+
+El trabajo consta de tres etapas que trabajan en conjunto. La primera consiste en el desarrollo del modelo cinemático del robot, que permite traducir los comandos de velocidad en velocidades de las ruedas Mecanum y, a su vez, estimar la posición del robot a partir de la odometría. En segundo lugar, se implementa un controlador que permite manejar los grados de libertad del robot de forma desacoplada, de manera que pueda realizar el seguimiento de la trayectoria de referencia mediante selección sucesiva de objetivos cercanos. Por último, se incorpora un Filtro de Kalman Extendido (EKF) que permite mejorar la estimación de la posición del robot, utilizando la odometría en conjunto con observaciones de postes del entorno detectados por un sensor láser. Esta estimación mejorada se utiliza como realimentación para el controlador, logrando un seguimiento más preciso de la trayectoria deseada.
+
+A lo largo del trabajo se presentan los modelos matemáticos utilizados, las decisiones tomadas durante la implementación y los experimentos realizados junto con sus resultados, a fin de evaluar el desempeño de las estimaciones frente a la pose real del robot.
 
 % =====================================================================
 \section{Modelo Cinemático}
