@@ -5,3 +5,6 @@ experiments/*/bag/
 *.mcap
 *.db3
 scripts/__pycache__
+
+# Notas personales — no versionar. docs/ sí va al repo, docs_locales/ no.
+docs_locales/

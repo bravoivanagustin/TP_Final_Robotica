@@ -147,6 +147,27 @@ Roles fijos:
 - **T3** — módulo 2: cambia entre tests (cada test es un `ros2 launch lazo_cerrado lazo_cerrado.launch.py …`).
 - **T4** — inspección: `ros2 topic echo`, `ros2 topic hz`, `tf2_echo`, eventualmente `rviz2`.
 
+#### Variante combo (3 terminales) — `seguimiento_odom.launch.py`
+
+Para correr el módulo 2 end-to-end con feedback por odometría pura (sin EKF), el launcher combinado `lazo_cerrado/launch/seguimiento_odom.launch.py` levanta odometría + controlador + generador en un solo proceso. Reemplaza el par T2+T3 por una sola terminal, dejando el setup en 3 terminales (sim + launcher combo + inspección):
+
+```bash
+# T2 (combo):
+ros2 launch lazo_cerrado seguimiento_odom.launch.py
+# con overrides para barridos del reporte:
+ros2 launch lazo_cerrado seguimiento_odom.launch.py kp_xy:=1.6 kp_yaw:=0.75
+```
+
+**Args expuestos** (los defaults son los mismos que `lazo_cerrado.launch.py`): `use_sim_time`, `kp_xy`, `kp_yaw`, `goal_mode`. El resto (`lookahead_distance`, `position_tolerance`, `square_half_side`, etc.) heredan los defaults internos de `lazo_cerrado.launch.py`; si en algún barrido hay que mutarlos, se agregan al combo en una línea cada uno. El `base_frame` queda hardcodeado en `base_link` — para cerrar el lazo sobre la pose del EKF hay que usar `ekf_localizer/launch/seguimiento_ekf.launch.py` (paralelo al combo odom, pero con todo el stack del módulo 3).
+
+**Cuándo usarlo**:
+- Barridos de `kp_xy`/`kp_yaw` para el reporte: lo que menos querés es gimnasia de terminales entre corridas.
+- Smoke tests rápidos del lazo entero.
+
+**Cuándo preferir el setup de 4 terminales**:
+- Sanity checks aislados en modo `FIXED` (Tests 1–5 más abajo): es cómodo reiniciar sólo T3 entre tests sin tocar la odometría.
+- Cualquier debug donde quieras inspeccionar la odometría con el controlador apagado.
+
 ### Verificación inicial del pipeline (al arrancar sesión)
 
 Con **T1** (sim en play) y **T2** (módulo 1) corriendo, antes de tocar el controlador validar desde **T4** que el pipeline base está sano. Tres comandos, en este orden:
