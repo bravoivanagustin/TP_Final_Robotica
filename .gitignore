@@ -1,4 +1,5 @@
-.claude/
+.claude/*
+!.claude/CLAUDE.md
 
 # Experiments: los bags son binarios grandes; el manifest, notes y plots sí se versionan.
 experiments/*/bag/
