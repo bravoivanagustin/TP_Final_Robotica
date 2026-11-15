@@ -102,8 +102,16 @@
                 <box size="0.050077 0.066455 0.085242" />
             </geometry>
         </collision>
+        <!-- Los origin xyz de las visuales del body estaban exportados desde
+             CoppeliaSim con el offset del mundo (-2, +2.228) baked in: sumaba ese
+             offset a cada mesh relativo a base_link, mientras que las ruedas
+             las publica el sim en TF con offsets nominales (±0.175, ±0.175).
+             Resultado: body renderizado 2.84 m al sudoeste de las ruedas.
+             Compensamos restando (-2, +2.228) de cada xyz para dejar el body
+             centrado en base_link. Preservamos los offsets internos
+             (body → arm_base → hokuyo) para mantener el ensamble. -->
         <visual name="ME_Platfo2_sub1">
-            <origin xyz="-2.000105 2.000000 0.095887" rpy="-1.569790 -1.570796 0.000000" />
+            <origin xyz="-0.000105 -0.228000 0.095887" rpy="-1.569790 -1.570796 0.000000" />
             <geometry>
                 <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_ME_Platfo2_sub1_vis_1.dae" />
             </geometry>
@@ -111,17 +119,11 @@
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
             </material>
         </visual>
+        <!-- La segunda capa de material del body (_vis_2.dae) no está en el repo
+             (nunca fue commiteada); se omite para evitar el error de "Unable to open
+             file" en RViz. Queda rendereado con _vis_1 + _vis_3; cosmético. -->
         <visual name="ME_Platfo2_sub1">
-            <origin xyz="-2.000105 2.000000 0.095887" rpy="-1.569790 -1.570796 0.000000" />
-            <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_ME_Platfo2_sub1_vis_2.dae" />
-            </geometry>
-            <material name="ME_Platfo2_sub1_material">
-                <color rgba="0.288235 0.288235 0.288235 1.0" />
-            </material>
-        </visual>
-        <visual name="ME_Platfo2_sub1">
-            <origin xyz="-2.000105 2.000000 0.095887" rpy="-1.569790 -1.570796 0.000000" />
+            <origin xyz="-0.000105 -0.228000 0.095887" rpy="-1.569790 -1.570796 0.000000" />
             <geometry>
                 <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_ME_Platfo2_sub1_vis_3.dae" />
             </geometry>
@@ -130,7 +132,7 @@
             </material>
         </visual>
         <visual name="Rectangle">
-            <origin xyz="-2.000389 2.281858 0.038566" rpy="-1.656318 3.141593 0.001006" />
+            <origin xyz="-0.000389 0.053858 0.038566" rpy="-1.656318 3.141593 0.001006" />
             <geometry>
                 <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Rectangle_vis_1.dae" />
             </geometry>
@@ -139,7 +141,7 @@
             </material>
         </visual>
         <visual name="Hokuyo_URG_04LX_UG01_ROS_body">
-            <origin xyz="-2.000000 2.273636 0.123316" rpy="-3.141593 3.141593 -1.570796" />
+            <origin xyz="0.000000 0.045636 0.123316" rpy="-3.141593 3.141593 -1.570796" />
             <geometry>
                 <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Hokuyo_URG_04LX_UG01_ROS_body_vis_1.dae" />
             </geometry>
@@ -148,7 +150,7 @@
             </material>
         </visual>
         <visual name="Hokuyo_URG_04LX_UG01_ROS_body">
-            <origin xyz="-2.000000 2.273636 0.123316" rpy="-3.141593 3.141593 -1.570796" />
+            <origin xyz="0.000000 0.045636 0.123316" rpy="-3.141593 3.141593 -1.570796" />
             <geometry>
                 <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Hokuyo_URG_04LX_UG01_ROS_body_vis_2.dae" />
             </geometry>
@@ -157,7 +159,7 @@
             </material>
         </visual>
         <visual name="Hokuyo_URG_04LX_UG01_ROS_body">
-            <origin xyz="-2.000000 2.273636 0.123316" rpy="-3.141593 3.141593 -1.570796" />
+            <origin xyz="0.000000 0.045636 0.123316" rpy="-3.141593 3.141593 -1.570796" />
             <geometry>
                 <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Hokuyo_URG_04LX_UG01_ROS_body_vis_3.dae" />
             </geometry>
@@ -296,9 +298,10 @@
             </geometry>
         </collision>
     </link>
-    <joint type="revolute" name="Joint">
-        <axis xyz="0 0 1" />
-        <limit effort="2.5" upper="0.17453292012215" velocity="6.2831854820251" lower="-0.17453292012215" />
+    <!-- Antes era revolute (brazo del youBot original): lo fijamos porque este
+         robot no tiene brazo y el joint rotaba las ruedas delanteras respecto
+         de las traseras cuando joint_state_publisher no lo dejaba en cero. -->
+    <joint type="fixed" name="Joint">
         <parent link="base_link" />
         <child link="Rectangle0" />
         <origin xyz="-2.000335 2.228000 0.049935" rpy="-1.570796 3.141593 -3.140587" />
