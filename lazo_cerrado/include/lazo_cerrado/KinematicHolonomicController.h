@@ -67,6 +67,14 @@ private:
   double position_tolerance_, yaw_tolerance_;
   std::string map_frame_, base_frame_;
 
+  // Pre-alineación: antes del pursuit, rotar en el lugar hasta que el yaw
+  // actual coincida con el yaw demandado por el primer waypoint. Elimina el
+  // pico inicial de wz que causaba slip en las primeras décimas de segundo.
+  // Una vez entrado en tolerancia, aligned_ queda true para siempre.
+  bool align_before_pursuit_;
+  double align_yaw_tolerance_;
+  bool aligned_ = false;
+
   // Throttle de warns por TF no lista al arranque.
   bool tf_ready_logged_ = false;
 };

@@ -27,6 +27,10 @@ def generate_launch_description():
     yaw_tolerance      = LaunchConfiguration('yaw_tolerance')
     control_rate_hz    = LaunchConfiguration('control_rate_hz')
 
+    # Pre-alineación: rotar en el lugar antes del pursuit.
+    align_before_pursuit = LaunchConfiguration('align_before_pursuit')
+    align_yaw_tolerance  = LaunchConfiguration('align_yaw_tolerance')
+
     # Frames del feedback (cambiables a base_link_ekf cuando entre módulo 3).
     map_frame  = LaunchConfiguration('map_frame')
     base_frame = LaunchConfiguration('base_frame')
@@ -67,6 +71,12 @@ def generate_launch_description():
         DeclareLaunchArgument('control_rate_hz', default_value='30.0',
                               description='Frecuencia del timer de control en Hz.'),
 
+        # Pre-alineación.
+        DeclareLaunchArgument('align_before_pursuit', default_value='true',
+                              description='Rotar en el lugar hasta igualar el yaw del primer goal antes de arrancar el pursuit.'),
+        DeclareLaunchArgument('align_yaw_tolerance', default_value='0.08',
+                              description='Tolerancia angular [rad] para dar por terminada la pre-alineación (default ≈ 4.6°).'),
+
         # Frames.
         DeclareLaunchArgument('map_frame', default_value='map',
                               description='Frame del setpoint y del feedback.'),
@@ -94,19 +104,21 @@ def generate_launch_description():
             name='trajectory_follower',
             output='screen',
             parameters=[{
-                'use_sim_time':        use_sim_time,
-                'goal_mode':           goal_mode,
-                'fixed_goal_x':        fixed_goal_x,
-                'fixed_goal_y':        fixed_goal_y,
-                'fixed_goal_yaw':      fixed_goal_yaw,
-                'kp_xy':               kp_xy,
-                'kp_yaw':              kp_yaw,
-                'lookahead_distance':  lookahead_distance,
-                'position_tolerance':  position_tolerance,
-                'yaw_tolerance':       yaw_tolerance,
-                'control_rate_hz':     control_rate_hz,
-                'map_frame':           map_frame,
-                'base_frame':          base_frame,
+                'use_sim_time':         use_sim_time,
+                'goal_mode':            goal_mode,
+                'fixed_goal_x':         fixed_goal_x,
+                'fixed_goal_y':         fixed_goal_y,
+                'fixed_goal_yaw':       fixed_goal_yaw,
+                'kp_xy':                kp_xy,
+                'kp_yaw':               kp_yaw,
+                'lookahead_distance':   lookahead_distance,
+                'position_tolerance':   position_tolerance,
+                'yaw_tolerance':        yaw_tolerance,
+                'control_rate_hz':      control_rate_hz,
+                'align_before_pursuit': align_before_pursuit,
+                'align_yaw_tolerance':  align_yaw_tolerance,
+                'map_frame':            map_frame,
+                'base_frame':           base_frame,
             }],
         ),
     ])

@@ -24,6 +24,12 @@ KinematicHolonomicController::KinematicHolonomicController()
   map_frame_          = this->declare_parameter("map_frame", std::string("map"));
   base_frame_         = this->declare_parameter("base_frame", std::string("base_link"));
 
+  // Pre-alineación: ver comentario en el header. Default activo porque elimina
+  // el pico inicial de wz sin costo si el robot ya arranca en la orientación
+  // correcta (tolerancia se cierra al toque).
+  align_before_pursuit_ = this->declare_parameter("align_before_pursuit", true);
+  align_yaw_tolerance_  = this->declare_parameter("align_yaw_tolerance", 0.08);  // ~4.6°
+
   // Parámetros del modo de selección de goal.
   std::string mode_str = this->declare_parameter("goal_mode", std::string("PURSUIT"));
   if (mode_str == "FIXED") {
@@ -51,9 +57,11 @@ KinematicHolonomicController::KinematicHolonomicController()
   real_path_msg_.header.frame_id = map_frame_;
 
   RCLCPP_INFO(this->get_logger(),
-              "Controller listo. goal_mode=%s kp_xy=%.3f kp_yaw=%.3f lookahead=%.3f map=%s base=%s",
+              "Controller listo. goal_mode=%s kp_xy=%.3f kp_yaw=%.3f lookahead=%.3f "
+              "align=%s align_tol=%.3f map=%s base=%s",
               (goal_mode_ == GoalMode::FIXED ? "FIXED" : "PURSUIT"),
               kp_xy_, kp_yaw_, lookahead_distance_,
+              (align_before_pursuit_ ? "true" : "false"), align_yaw_tolerance_,
               map_frame_.c_str(), base_frame_.c_str());
 }
 
@@ -78,7 +86,23 @@ bool KinematicHolonomicController::control(
   publishGoalMarker(gx, gy, gyaw, t);
   appendAndMaybePublishRealPath(x, y, yaw, t);
 
-  // 3) Errores en mundo y rotación a frame body.
+  // 3) Pre-alineación (una sola vez, al arranque): rotar en el lugar hasta
+  //    quedar dentro de align_yaw_tolerance_ del yaw del primer goal. Elimina
+  //    el pico inicial de wz y el slip Mecanum que ese pico induce.
+  if (align_before_pursuit_ && !aligned_) {
+    double eth = angles::normalize_angle(gyaw - yaw);
+    if (std::abs(eth) > align_yaw_tolerance_) {
+      vx = 0.0;
+      vy = 0.0;
+      wz = kp_yaw_ * eth;
+      return true;
+    }
+    aligned_ = true;
+    RCLCPP_INFO(this->get_logger(),
+                "Pre-alineación completa (yaw_err=%.3f rad), iniciando pursuit.", eth);
+  }
+
+  // 4) Errores en mundo y rotación a frame body.
   double ex_w = gx - x;
   double ey_w = gy - y;
   double eth  = angles::normalize_angle(gyaw - yaw);
@@ -88,7 +112,7 @@ bool KinematicHolonomicController::control(
   double ex_b =  cth * ex_w + sth * ey_w;
   double ey_b = -sth * ex_w + cth * ey_w;
 
-  // 4) Ley P por GDL.
+  // 5) Ley P por GDL.
   vx = kp_xy_  * ex_b;
   vy = kp_xy_  * ey_b;
   wz = kp_yaw_ * eth;
