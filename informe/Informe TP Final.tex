@@ -48,7 +48,7 @@
 {\Large
 \begin{tabular}{ll}
 \textbf{Alumno} & \textbf{L.U.} \\[0.4em]
-Iván Agustín Bravo          & \TODO{completar L.U.}  \\
+Iván Agustín Bravo          & 786/23  \\
 Pablo Benavente Jacyszyn & 1035/22 \\
 \end{tabular}
 \par}
@@ -77,24 +77,82 @@ A lo largo del trabajo se presentan los modelos matemáticos utilizados, las dec
 % Consigna: presentar particularidades de la plataforma, parámetros,
 % metodología de odometría, y experimentos que validen el modelo.
 \subsection{Plataforma y parámetros}
-\begin{tareas}
-    \item \TODO{Describir la plataforma Mecanum: 4 ruedas fijas, rodillos a 45°, dimensiones 350mm x 350mm, radio de rueda 50mm, encoder de 500 ticks/rev (absoluto, signo según sentido de giro).}
-    \item \TODO{Tabla de parámetros efectivamente usados en el código (\texttt{modelo\_holonomico/mecanum\_odometry.cpp}, líneas 14-16): \texttt{WHEEL\_L = 0.175 m}, \texttt{WHEEL\_RADIUS = 0.05 m}, \texttt{ENCODER\_TICKS = 500}.}
-    \item \TODO{Aclarar que estos valores están hardcodeados y no como \texttt{declare\_parameter} (mencionar como decisión de diseño o como pendiente, según se resuelva antes de entregar).}
-\end{tareas}
+
+La plataforma es un robot de cuatro ruedas Mecanum con disposición cuadrada, con una distancia de 350mm entre ejes. Las ruedas son fijas y cada una cuenta con su propio motor, y tienen la particularidad de tener rodillos a 45° que sirven para transmitir parte de la fuerza de la rueda en dirección de ese ángulo. De esta forma, dependiendo el sentido de giro de cada rueda, las componentes se suman o se cancelan, permitiendo que el robot se desplace en cualquier dirección. 
+
+Cada rueda tiene un encoder absoluto de 500 ticks por revolución, que suma cuando la rueda gira en sentido horario, y resta cuando gira en sentido antihorario. A su vez, el radio de la rueda es de 50mm, de manera que cada tick del encoder representa un recorrido de $2\pi r/500 \approx 0.63$ mm, lo que fija el desplazamiento mínimo que la odometría puede detectar. 
+
+Los parámetros del modelo se encuentran resumidos en la siguiente tabla: 
+
+\begin{table}[h]
+\centering
+\begin{tabular}{llc}
+\toprule
+\textbf{Parámetro} & \textbf{Símbolo} & \textbf{Valor} \\
+\midrule
+Radio de rueda & $r$ & $0.05$ m \\
+Semidistancia entre ruedas & $L = (l_x + l_y)/2$ & $0.175$ m \\
+Resolución del encoder & -- & 500 ticks/rev \\
+\bottomrule
+\end{tabular}
+\caption{Parámetros de la plataforma.}
+\label{tab:parametros}
+\end{table}
 
 \subsection{Cinemática inversa (control de ruedas)}
-\begin{tareas}
-    \item \TODO{Plantear el modelo del paper "Kinematic Model Of Four Mecanum Wheeled Mobile Robot" (ecuación 20) que mapea $[v_x, v_y, \omega]$ del \texttt{geometry\_msgs/Twist} recibido en \texttt{/robot/cmd\_vel} a las 4 velocidades de rueda.}
-    \item \TODO{Detallar la publicación resultante en los 4 tópicos \texttt{/robot/\{front\_left,front\_right,rear\_left,rear\_right\}\_wheel/cmd\_vel}.}
-\end{tareas}
+
+Se implementó la cinemática inversa propuesta en Taheri et al. \emph{Kinematic Model Of Four Mecanum Wheeled Mobile Robot} (ecuación 20) que, dada la velocidad deseada del robot en su propio marco, calcula la velocidad angular que debe tener cada rueda:
+
+\begin{equation}
+\begin{bmatrix}\omega_{FL}\\ \omega_{FR}\\ \omega_{RL}\\ \omega_{RR}\end{bmatrix}
+= \frac{1}{r}
+\begin{bmatrix}
+1 & -1 & -(l_x+l_y)\\
+1 & 1 & (l_x+l_y)\\
+1 & 1 & -(l_x+l_y)\\
+1 & -1 & (l_x+l_y)
+\end{bmatrix}
+\begin{bmatrix}v_x\\ v_y\\ \omega_z\end{bmatrix}
+\label{eq:cin_inversa}
+\end{equation}
+
+donde $\omega_{FL}$, $\omega_{FR}$, $\omega_{RL}$ y $\omega_{RR}$ son las velocidades angulares de las ruedas del robot, $v_x$ y $v_y$ son las velocidades lineales en los respectivos ejes, $\omega_z$ es la velocidad de giro del robot alrededor de su eje vertical y $r$, $l_x$ y $l_y$ son los parámetros de la plataforma (Tabla~\ref{tab:parametros}). Cada columna de la matriz explica el efecto de cada componente de la velocidad deseada sobre el movimiento de las ruedas. 
+
+El nodo recibe el comando \texttt{geometry\_msgs/Twist} por el tópico \texttt{/robot/cmd\_vel} y publica en los tópicos \texttt{/robot/front\_left\_wheel/cmd\_vel}, \texttt{/robot/front\_right\_wheel/cmd\_vel}, \texttt{/robot/rear\_left\_wheel/cmd\_vel} y \texttt{/robot/rear\_right\_wheel/cmd\_vel} las velocidades de cada rueda (calculadas con la ecuación~\eqref{eq:cin_inversa}).
 
 \subsection{Cinemática directa (odometría)}
-\begin{tareas}
-    \item \TODO{Plantear el modelo inverso (ecuación 21) que estima velocidad lineal/angular del robot a partir de los deltas de encoder.}
-    \item \TODO{Explicar la integración de los deltas en frame \emph{body} (incluyendo \texttt{dyb}, el desplazamiento lateral/\emph{strafing} propio de un robot holonómico) hacia el frame inercial \texttt{odom}.}
-    \item \TODO{Describir el nodo \texttt{mecanum\_odometry\_node}: suscripción a \texttt{/robot/encoders}, publicación de TF \texttt{odom→base\_link} y de \texttt{nav\_msgs/Odometry} en \texttt{/robot/odometry}, frecuencia de publicación (\textasciitilde100 Hz).}
-\end{tareas}
+
+Para estimar la pose del robot se implementó el modelo inverso propuesto en Taheri et al. \emph{Kinematic Model Of Four Mecanum Wheeled Mobile Robot} (ecuaciones 21 a 24) que, con los giros de las ruedas, permite calcular la velocidad del robot. 
+
+El nodo lee los ticks de los encoders de cada rueda por el tópico \texttt{/robot/encoders}. A partir de dos lecturas consecutivas, se utiliza la variación de ticks de cada rueda $i$ para calcular la distancia recorrida: 
+
+\begin{equation}
+d_i = \frac{\Delta\text{ticks}_i}{500}\,2\pi r
+\end{equation}
+y, con estas distancias se calcula el desplazamiento del robot, expresado en su propio marco:
+\begin{equation}
+\begin{bmatrix}\Delta x_b\\ \Delta y_b\\ \Delta\theta\end{bmatrix}
+= \frac{1}{4}
+\begin{bmatrix}
+1 & 1 & 1 & 1\\
+-1 & 1 & 1 & -1\\
+-\dfrac{1}{l_x+l_y} & \dfrac{1}{l_x+l_y} & -\dfrac{1}{l_x+l_y} & \dfrac{1}{l_x+l_y}
+\end{bmatrix}
+\begin{bmatrix}d_1\\ d_2\\ d_3\\ d_4\end{bmatrix}
+\label{eq:cin_directa}
+\end{equation}
+
+donde los índices 1 a 4 corresponden a las cuatro ruedas del robot (FL, FR, RL, RR). La segunda fila de la matriz permite calcular el desplazamiento lateral del robot, a diferencia de un robot diferencial. 
+
+Para obtener la pose del robot en el marco inercial \texttt{odom}, se aplica una rotación según la orientación actual $\theta$ a los desplazamientos $\Delta x_b$ y $\Delta y_b$ y se suman a la pose anterior: 
+
+\begin{align}
+x &\leftarrow x + \Delta x_b\cos\theta - \Delta y_b\sin\theta\\
+y &\leftarrow y + \Delta x_b\sin\theta + \Delta y_b\cos\theta\\
+\theta &\leftarrow \theta + \Delta\theta
+\end{align}
+
+La pose se inicializa en el origen del marco \texttt{odom}. Al procesar cada lectura de los encoders, el nodo publica la pose estimada y la velocidad del robot como un mensaje \texttt{nav\_msgs/Odometry} en el tópico \texttt{/robot/odometry}, y la pose como la transformación \texttt{odom} $\rightarrow$ \texttt{base\_link} en \texttt{/tf}. En ambos casos, la referencia del tiempo proviene de la lectura de los encoders. 
 
 \subsection{Experimentos}
 \begin{tareas}
