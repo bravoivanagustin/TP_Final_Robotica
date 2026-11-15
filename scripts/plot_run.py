@@ -6,9 +6,14 @@ Uso:
 
 Lee <dir>/manifest.yaml y <dir>/bag/, y escribe PNGs a <dir>/plots/.
 Los plots dependen de `cmd_source.tipo` en el manifest:
-  - open_loop_twist  → xy_path, body_velocity, odom_vs_cmd (módulo 1).
+  - open_loop_twist  → xy_path, body_velocity, odom_vs_cmd, wheel_velocities (módulo 1).
   - closed_loop_launch → módulo 1 + tracking_error, yaw_error, goal_pose_vs_pose
                           (módulo 2, requiere /robot/trajectory en el bag).
+
+xy_path dibuja la pose integrada por odometría. Si el bag contiene /tf con un
+TF `child=base_link_gt` (sim lo publica si grabamos /tf y /tf_static), suma como
+overlay la trayectoria ground truth reconstruida en frame `map` — la brecha
+odometría↔GT es exactamente el drift que motiva el EKF del módulo 3.
 
 Requiere: numpy, matplotlib, pyyaml, y las libs de ROS 2 Humble
 (rosbag2_py, rclpy.serialization, rosidl_runtime_py), por lo que hay que
@@ -41,6 +46,13 @@ except ImportError as e:
 
 REF_TRAJ_TOPIC = "/robot/trajectory"
 GOAL_POSE_TOPIC = "/goal_pose"
+TF_TOPICS = ("/tf", "/tf_static")
+
+# Frame del ground truth que publica CoppeliaSim. CLAUDE.md §"Simulator interface" lo
+# establece: el sim mantiene map → odom (identidad) y odom → base_link_gt como cadena
+# paralela a la que nuestra odometría integra (odom → base_link). Lo usamos SOLO para
+# evidencia (plots, métricas) — nunca como feedback de control (ídem consigna).
+GT_CHILD_FRAME = "base_link_gt"
 
 # Ruedas: convención del proyecto — MultiEncoderTicks.ticks[i] con i en 0..3 =
 # [FL, FR, RL, RR]. Los topics de velocidad angular comandada tienen esa nomenclatura.
@@ -196,6 +208,132 @@ def extract_wheel_encoder_velocities(entries):
     return result
 
 
+def extract_gt_pose(tf_entries, tf_static_entries):
+    """Reconstruye la pose GT en frame map a partir de /tf y /tf_static.
+
+    Devuelve (ts, xs, ys, yaws) con la pose de `base_link_gt` expresada en `map`.
+
+    Convención de la escena (ver CLAUDE.md §"Simulator interface"):
+      map → odom          (publicada por el sim; estática o ~6 Hz dinámica)
+      odom → base_link_gt (publicada ~10 Hz por el sim)
+
+    Componemos la cadena combinando /tf (dinámico) y /tf_static. Para cada
+    arista mantenemos la "última vista": esto maneja tanto el caso estático
+    puro como el caso en el que map→odom venga por /tf como en nuestro sim.
+
+    Si no aparece ningún TF con child == base_link_gt, devolvemos arrays vacíos y
+    el caller decide si avisar al usuario.
+    """
+    # Snapshot de la última TF vista para cada arista. Las estáticas se cargan
+    # primero; las dinámicas las van pisando si llegan (lo deseado).
+    latest = {}  # (parent, child) -> TransformStamped
+    for _, msg in tf_static_entries:
+        for tr in msg.transforms:
+            latest[(tr.header.frame_id, tr.child_frame_id)] = tr
+
+    def compose_to_map(parent, tx, ty, yaw):
+        """Si parent != map, camina hacia atrás por el `latest` hasta llegar a `map`.
+        Devuelve (x_map, y_map, yaw_map) o None si la cadena no se cierra."""
+        x, y, th = tx, ty, yaw
+        current = parent
+        for _ in range(6):  # tope de seguridad por si hay ciclo o cadena muy larga
+            if current == "map":
+                return x, y, th
+            # Buscamos la última TF <algo> → current conocida.
+            found = None
+            for (p, c), tr in latest.items():
+                if c == current:
+                    found = (p, tr)
+                    break
+            if found is None:
+                return None
+            p, tr = found
+            # pose_in_p = T_p_current · pose_in_current
+            c, s = math.cos(_tf_yaw(tr)), math.sin(_tf_yaw(tr))
+            x_new = tr.transform.translation.x + c * x - s * y
+            y_new = tr.transform.translation.y + s * x + c * y
+            th += _tf_yaw(tr)
+            x, y = x_new, y_new
+            current = p
+        return None
+
+    ts, xs, ys, yaws = [], [], [], []
+    for t_bag, msg in tf_entries:
+        # Primero pisamos el snapshot con todo lo que trae este TFMessage.
+        # Hacemos esto ANTES de procesar las entradas de GT en este mismo
+        # mensaje: si el sim publica map→odom en el mismo tick que odom→GT,
+        # queremos usar el map→odom actualizado.
+        for tr in msg.transforms:
+            latest[(tr.header.frame_id, tr.child_frame_id)] = tr
+        for tr in msg.transforms:
+            if tr.child_frame_id != GT_CHILD_FRAME:
+                continue
+            tx = tr.transform.translation.x
+            ty = tr.transform.translation.y
+            r = tr.transform.rotation
+            yaw = quat_to_yaw(r.x, r.y, r.z, r.w)
+            parent = tr.header.frame_id
+            if parent == "map":
+                x_m, y_m, yaw_m = tx, ty, yaw
+            else:
+                composed = compose_to_map(parent, tx, ty, yaw)
+                if composed is None:
+                    continue  # cadena no cerrable todavía (map→odom aún no llegó)
+                x_m, y_m, yaw_m = composed
+            ts.append(t_bag)
+            xs.append(x_m)
+            ys.append(y_m)
+            yaws.append(yaw_m)
+
+    return np.array(ts), np.array(xs), np.array(ys), np.array(yaws)
+
+
+def extract_map_odom_offset(tf_entries, tf_static_entries):
+    """Devuelve el offset (dx, dy, dyaw) de `map → odom` a partir del bag.
+
+    Asume que `map → odom` es constante durante la corrida (lo típico en
+    CoppeliaSim: la escena fija dónde arranca el robot y no toca esa TF
+    después). Si no aparece, devuelve None y el caller asume identidad.
+    """
+    # Buscamos en /tf_static primero (caso ideal), después en /tf.
+    for _, msg in tf_static_entries:
+        for tr in msg.transforms:
+            if tr.header.frame_id == "map" and tr.child_frame_id == "odom":
+                return (tr.transform.translation.x,
+                        tr.transform.translation.y,
+                        _tf_yaw(tr))
+    for _, msg in tf_entries:
+        for tr in msg.transforms:
+            if tr.header.frame_id == "map" and tr.child_frame_id == "odom":
+                return (tr.transform.translation.x,
+                        tr.transform.translation.y,
+                        _tf_yaw(tr))
+    return None
+
+
+def _tf_yaw(tr):
+    q = tr.transform.rotation
+    return quat_to_yaw(q.x, q.y, q.z, q.w)
+
+
+def apply_map_odom_offset(odom, offset):
+    """Aplica el offset (dx, dy, dyaw) de map→odom a cada pose de la odometría.
+
+    Devuelve una tupla igual a la que devuelve extract_odom pero con (x, y, yaw)
+    expresados en frame `map`. Útil para el overlay en xy_path contra referencia
+    y GT, que viven en `map`.
+    """
+    if offset is None:
+        return odom
+    dx, dy, dyaw = offset
+    ts, x, y, yaw, vx, vy, wz = odom
+    c, s = math.cos(dyaw), math.sin(dyaw)
+    x_map = dx + c * x - s * y
+    y_map = dy + s * x + c * y
+    yaw_map = yaw + dyaw
+    return (ts, x_map, y_map, yaw_map, vx, vy, wz)
+
+
 def extract_wheel_cmd(entries):
     """Lista de (t, std_msgs/Float64) → (ts, values). Devuelve arrays vacíos si no hay entries."""
     if not entries:
@@ -205,10 +343,10 @@ def extract_wheel_cmd(entries):
     return ts, values
 
 
-def plot_xy(odom, manifest, out_path: Path, ref_traj=None):
+def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None):
     ts, x, y, yaw, vx, vy, wz = odom
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.plot(x, y, label="odometría")
+    ax.plot(x, y, label="odometría", color="C0")
     if len(x):
         ax.scatter([x[0]], [y[0]], marker="o", label="inicio")
         ax.scatter([x[-1]], [y[-1]], marker="x", label="fin")
@@ -216,6 +354,16 @@ def plot_xy(odom, manifest, out_path: Path, ref_traj=None):
     # Todos los puntos que participan en el rango visible (para calcular el bbox cuadrado).
     xs_all = [np.asarray(x)]
     ys_all = [np.asarray(y)]
+
+    # Overlay del ground truth (si el bag incluyó /tf con base_link_gt). Es la pose
+    # real que conoce el simulador — la brecha con la odometría es exactamente el
+    # drift acumulado por integración, que motiva el módulo 3 (EKF).
+    if gt is not None:
+        ts_gt, xg, yg, _ = gt
+        if len(xg):
+            ax.plot(xg, yg, label="ground truth (sim)", color="C2", linewidth=1.2)
+            xs_all.append(np.asarray(xg))
+            ys_all.append(np.asarray(yg))
 
     # Overlay de la referencia de módulo 2 (si está disponible).
     if ref_traj is not None:
@@ -512,6 +660,7 @@ def main():
     closed_loop = is_closed_loop(manifest)
 
     topics = ["/robot/odometry", "/robot/cmd_vel", ENCODER_TOPIC] + WHEEL_CMD_TOPICS
+    topics += list(TF_TOPICS)  # para reconstruir la pose GT desde /tf.
     if closed_loop:
         topics += [REF_TRAJ_TOPIC, GOAL_POSE_TOPIC]
 
@@ -526,6 +675,31 @@ def main():
     ref_traj = extract_trajectory(msgs.get(REF_TRAJ_TOPIC, [])) if closed_loop else None
     goals = extract_goal_pose(msgs.get(GOAL_POSE_TOPIC, [])) if closed_loop else None
 
+    tf_dyn = msgs.get("/tf", [])
+    tf_sta = msgs.get("/tf_static", [])
+    gt = extract_gt_pose(tf_dyn, tf_sta)
+    if not len(gt[0]):
+        print(
+            "Aviso: no se encontró ninguna TF con child='base_link_gt' en el bag — el "
+            "overlay de ground truth no se dibuja. Agregá /tf y /tf_static a "
+            "topics_grabados del manifest si lo querés.",
+            file=sys.stderr,
+        )
+        gt = None
+
+    # Trasladamos la odometría al frame `map` para que el plot sea comparable con
+    # la referencia (viene en map) y el GT (idem). Si map→odom no se encuentra,
+    # se asume identidad.
+    map_odom = extract_map_odom_offset(tf_dyn, tf_sta)
+    if map_odom is None:
+        print(
+            "Aviso: no se encontró TF `map → odom` en el bag — se grafica la "
+            "odometría en frame `odom` (origen en el inicio de la corrida). Si la "
+            "referencia es en `map`, va a aparecer con un offset constante.",
+            file=sys.stderr,
+        )
+    odom_in_map = apply_map_odom_offset(odom, map_odom)
+
     enc_wheels = extract_wheel_encoder_velocities(msgs.get(ENCODER_TOPIC, []))
     cmd_wheels = {i: extract_wheel_cmd(msgs.get(topic, []))
                   for i, topic in enumerate(WHEEL_CMD_TOPICS)}
@@ -537,14 +711,18 @@ def main():
         )
 
     print("Generando plots...")
-    plot_xy(odom, manifest, plots_dir / "xy_path.png", ref_traj=ref_traj)
+    # xy_path y los plots de módulo 2 (tracking_error, yaw_error) usan pose en
+    # map: así la odometría, la referencia y el GT caen en el mismo frame y las
+    # distancias tienen sentido físico. El resto (body_velocity, odom_vs_cmd,
+    # wheel_velocities) vive en el marco del robot/odom y no cambia.
+    plot_xy(odom_in_map, manifest, plots_dir / "xy_path.png", ref_traj=ref_traj, gt=gt)
     plot_body_velocity(odom, cmd, plots_dir / "body_velocity.png", slug)
     plot_odom_vs_cmd(odom, cmd, plots_dir / "odom_vs_cmd.png", slug)
     plot_wheel_velocities(enc_wheels, cmd_wheels, plots_dir / "wheel_velocities.png", slug)
 
     if closed_loop and ref_traj is not None:
-        plot_tracking_error(odom, ref_traj, plots_dir / "tracking_error.png", slug)
-        plot_yaw_error(odom, ref_traj, plots_dir / "yaw_error.png", slug)
+        plot_tracking_error(odom_in_map, ref_traj, plots_dir / "tracking_error.png", slug)
+        plot_yaw_error(odom_in_map, ref_traj, plots_dir / "yaw_error.png", slug)
     elif closed_loop and ref_traj is None:
         print(
             f"Aviso: cmd_source es closed_loop_launch pero el bag no tiene {REF_TRAJ_TOPIC} "
@@ -553,7 +731,8 @@ def main():
         )
 
     if closed_loop and goals is not None and len(goals[0]):
-        plot_goal_pose_vs_pose(odom, goals, plots_dir / "goal_pose_vs_pose.png", slug)
+        # goal_pose viene en map; comparamos contra la odometría también en map.
+        plot_goal_pose_vs_pose(odom_in_map, goals, plots_dir / "goal_pose_vs_pose.png", slug)
 
     print(f"Listo: {plots_dir}")
 
