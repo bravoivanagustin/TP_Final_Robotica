@@ -246,12 +246,22 @@ De esta forma, el robot persigue un punto que siempre se encuentra a aproximadam
 % =====================================================================
 \section{Localización basada en EKF}
 \subsection{Detección de landmarks (postes)}
-\begin{tareas}
-    \item \TODO{Describir el nodo \texttt{landmark\_detector\_node}: suscripción a \texttt{/robot/front\_laser/scan}.}
-    \item \TODO{Explicar el método de clusterización: agrupamiento secuencial por distancia entre puntos consecutivos (\texttt{cluster\_distance\_threshold = 0.15 m}), filtros de tamaño de cluster (\texttt{min\_cluster\_points = 2}, \texttt{max\_cluster\_points = 30}).}
-    \item \TODO{Explicar el cálculo del centroide de cada cluster y su publicación como $(r, \varphi)$ en \texttt{/landmarks} (\texttt{robmovil\_msgs/LandmarkArray}), en el frame de \texttt{base\_link} (transformación \texttt{front\_laser→base\_link} vía TF).}
-    \item \TODO{Mencionar la visualización de marcadores en \texttt{/landmark\_markers} (RViz2).}
-\end{tareas}
+
+Para corregir la estimación de la pose del robot, se utilizan los postes del mapa como referencias (\emph{landmarks}). El nodo \texttt{landmark\_detector} recibe las lecturas del láser por \texttt{/robot/front\_laser/scan} y detecta los postes mediante clusterización de la siguiente manera:
+
+\begin{enumerate}
+    \item \textbf{Conversión a cartesianas.} Cada medición válida del escaneo, de rango $r_i$ y ángulo $\alpha_i$, se convierte al punto $(r_i\cos\alpha_i,\ r_i\sin\alpha_i)$ en el marco del láser, y luego se lleva al marco del robot (\texttt{base\_link}) con la transformación \texttt{base\_link} $\leftarrow$ \texttt{front\_laser}. Se descartan las mediciones no finitas o fuera del rango permitido (hasta 8~m).
+    \item \textbf{Clusterización secuencial.} Los puntos se recorren en el orden del escaneo y se agrupan: un punto pertenece al mismo grupo que el anterior si la distancia entre ambos es menor a $0.15$~m. Cuando la distancia lo supera, el grupo actual se cierra y se abre uno nuevo.
+    \item \textbf{Filtrado.} Un grupo se acepta como poste solo si tiene entre 2 y 30 puntos. Esto descarta mediciones aisladas y objetos más grandes que un poste.
+\end{enumerate}
+
+De cada grupo, se promedian los puntos para calcular el centroide, y se lo expresa como un rango y un ángulo con respecto al robot:
+
+\begin{equation}
+r = \sqrt{c_x^2 + c_y^2}, \qquad \varphi = \mathrm{atan2}(c_y, c_x)
+\end{equation}
+
+Las observaciones de los landmarks se publican en \texttt{/landmarks} como un mensaje \texttt{robmovil\_msgs/LandmarkArray}, en el marco del robot y con la marca del escaneo del cual provienen. Además, en \texttt{/landmark\_markers} se publican marcadores de cada poste para poder visualizarlos en RViz2.
 
 \subsection{Modelo del EKF}
 \begin{tareas}
