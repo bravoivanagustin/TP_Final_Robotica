@@ -12,6 +12,8 @@
 \usepackage{booktabs}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,babel}
 
 \hypersetup{
     colorlinks=true,
@@ -165,20 +167,73 @@ La pose se inicializa en el origen del marco \texttt{odom}. Al procesar cada lec
 % =====================================================================
 \section{Control a lazo cerrado y seguimiento de trayectorias}
 \subsection{Controlador Proporcional}
-\begin{tareas}
-    \item \TODO{Diagrama de lazo cerrado: setpoint (pose objetivo) $\to$ cálculo de error en frame \emph{body} $\to$ controlador P $\to$ velocidades $(v_x, v_y, \omega)$ $\to$ planta (robot) $\to$ realimentación por odometría.}
-    \item \TODO{Presentar las ecuaciones del controlador: error rotado a body frame ($e_{x,b} = \cos\theta \cdot e_{x,w} + \sin\theta \cdot e_{y,w}$, $e_{y,b} = -\sin\theta \cdot e_{x,w} + \cos\theta \cdot e_{y,w}$) y ley de control $v_x = k_{p,xy} \cdot e_{x,b}$, $v_y = k_{p,xy} \cdot e_{y,b}$, $\omega = k_{p,yaw} \cdot e_\theta$.}
-    \item \TODO{Justificar por qué se puede controlar cada GDL de forma independiente (robot holonómico, no hay restricción no-holonómica).}
-    \item \TODO{Mencionar que actualmente no hay saturación de velocidades en la ley de control (evaluar si agregar clamp antes de entregar, o justificar por qué no hace falta).}
-\end{tareas}
+
+Los tres grados de libertad ($x$, $y$ y $\theta$), pueden controlarse de manera independiente dado que se trata de un robot holonómico. Se implementó un controlador proporcional (P) para cada uno de estos grados. En cada iteración se compara la pose actual del robot $(x, y, \theta)$ con la pose objetivo $(x_g, y_g, \theta_g)$ y se calcula el error en el marco inercial:
+
+\begin{equation}
+e_{x,w} = x_g - x, \qquad e_{y,w} = y_g - y, \qquad e_\theta = \mathrm{norm}(\theta_g - \theta)
+\end{equation}
+donde $\mathrm{norm}(\cdot)$ lleva el ángulo al intervalo $[-\pi, \pi]$, para que el robot siempre gire por el camino más corto. Como el comando de velocidad se expresa en el marco del robot, el error de posición se rota según la orientación actual:
+\begin{equation}
+\begin{bmatrix} e_{x,b} \\ e_{y,b} \end{bmatrix} =
+\begin{bmatrix} \cos\theta & \sin\theta \\ -\sin\theta & \cos\theta \end{bmatrix}
+\begin{bmatrix} e_{x,w} \\ e_{y,w} \end{bmatrix}
+\end{equation}
+y la ley de control es:
+\begin{equation}
+v_x = k_{p,xy}\, e_{x,b}, \qquad v_y = k_{p,xy}\, e_{y,b}, \qquad \omega_z = k_{p,yaw}\, e_\theta
+\label{eq:ley_control}
+\end{equation}
+
+Las velocidades resultantes se publican en \texttt{/robot/cmd\_vel} como un \texttt{Twist}, que el modelo cinemático convierte en velocidades de rueda. La pose actual se obtiene de la transformación \texttt{map} $\rightarrow$ \texttt{base\_link}, que cierra el lazo (Figura~\ref{fig:lazo_cerrado}).
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=0.8, transform shape, node distance=2.2cm, >=Stealth,
+  blk/.style={draw, rectangle, minimum width=2.4cm, minimum height=1cm, align=center}]
+  \node (sp) {$(x_g,y_g,\theta_g)$};
+  \node[circle, draw, right=1.2cm of sp] (sum) {};
+  \node[blk, right=1.2cm of sum] (rot) {Rotación\\a marco robot};
+  \node[blk, right=1.2cm of rot] (p) {Controlador P};
+  \node[blk, right=2.6cm of p] (rob) {Robot};
+  \node[right=1.2cm of rob] (out) {$(x,y,\theta)$};
+  \node[blk, below=1.2cm of p] (odo) {Odometría};
+  \draw[->] (sp) -- (sum);
+  \draw[->] (sum) -- node[above] {$e$} (rot);
+  \draw[->] (rot) -- node[above] {$e_b$} (p);
+  \draw[->] (p) -- node[above, font=\small] {$v_x,v_y,\omega_z$} (rob);
+  \draw[->] (rob) -- (out);
+  \draw[->] ($(rob.east)+(0.6,0)$) |- (odo.east);
+  \draw[->] (odo.west) -| node[pos=0.95, left] {$-$} (sum.south);
+\end{tikzpicture}
+\caption{Lazo cerrado del controlador de pose.}
+\label{fig:lazo_cerrado}
+\end{figure}
+
+Al comenzar, el robot rota sobre su eje (con $v_x = v_y = 0$ y la misma ley para $\omega_z$) hasta que el error de orientación respecto del primer objetivo es menor a 0.08~rad ($\approx 4.6^\circ$). Esto se hace para evitar un pico inicial de velocidad angular, que provocaría el deslizamiento de las ruedas Mecanum.
 
 \subsection{Trayectoria cuadrada y \emph{pursuit-based following}}
-\begin{tareas}
-    \item \TODO{Definir la trayectoria cuadrada de 2 m de lado (vértices $(\pm2,\pm2)$ en frame \texttt{map}) y la orientación "opuesta al centro" (yaw radial saliente $\theta = \mathrm{atan2}(y,x)$).}
-    \item \TODO{Explicar la discretización en waypoints (paso de 0.05 m, \textasciitilde321 puntos) generada por el nodo \texttt{trajectory\_generator}.}
-    \item \TODO{Explicar el método pursuit-based: cursor monotónico sobre la lista de waypoints, \texttt{lookahead\_distance = 0.30 m}, criterio de avance al siguiente punto (\texttt{position\_tolerance = 0.05 m}, \texttt{yaw\_tolerance = 0.05 rad}).}
-    \item \TODO{Describir el nodo \texttt{trajectory\_follower}: feedback vía TF \texttt{map→base\_link} (parametrizable a otro frame), publicación periódica en \texttt{/robot/cmd\_vel} (\texttt{control\_rate\_hz = 30 Hz}), y tópicos de depuración \texttt{/goal\_pose} y \texttt{/real\_path}.}
-\end{tareas}
+
+La trayectoria de referencia es un cuadrado centrado en el origen del mapa. El robot debe recorrerla en sentido antihorario, manteniendo siempre el frente hacia afuera del cuadrado, alejándose del centro. La orientación objetivo del robot en un punto $(x,y)$ de la trayectoria es la que va del centro a ese punto: 
+
+\begin{equation}
+\theta_g = \mathrm{atan2}(y, x)
+\end{equation}
+
+Esta orientación puede mantenerse a lo largo de todo el recorrido porque el robot es holonómico, de manera que puede seguir la trayectoria sin girar hacia la dirección del movimiento.
+
+Para que el controlador pueda seguir la trayectoria, el nodo \texttt{trajectory\_generator} la divide en una lista de waypoints discretos, separados 0.05~m, cada uno con una posición y una orientación $\theta_g$, y la publica en \texttt{/robot/trajectory}. 
+
+El controlador lleva al robot hacia una pose objetivo. Si esa pose fuera el último punto de la trayectoria, el robot iría directo hacia él en lugar de seguir el cuadrado. Por eso el objetivo se actualiza a medida que el robot avanza, eligiendo siempre un waypoint cercano de la lista (\emph{pursuit-based goal selection}). El objetivo se elige de la siguiente manera:
+
+\begin{itemize}
+    \item Al comenzar, se toma como punto de partida el waypoint más cercano al robot.
+    \item En cada iteración, se recorre la lista desde el último objetivo y se elige el primer waypoint que está a más de una distancia de anticipación (\emph{lookahead}) de $0.30$~m del robot. El cursor solo avanza: nunca vuelve a un waypoint anterior.
+    \item Cuando ya no quedan waypoints más allá del \emph{lookahead}, el objetivo es el último punto de la trayectoria. La trayectoria se da por terminada cuando el robot está a menos de $0.05$~m de ese punto y su orientación difiere en menos de $0.05$~rad.
+\end{itemize}
+
+De esta forma, el robot persigue un punto que siempre se encuentra a aproximadamente $0.30$~m por delante. 
+
 
 \subsection{Experimentos}
 \begin{tareas}
