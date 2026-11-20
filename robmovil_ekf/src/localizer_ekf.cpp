@@ -25,9 +25,15 @@ void robmovil_ekf::LocalizerEKF::reset(double x_init, double y_init, double thet
 
   /* covarianza inicial */
   Matrix P(3, 3);
-  for (int i = 1; i <= 3; i++)
-    for (int j = 1; j <= 3; j++)
-      P(i,j) = (i == j) ? init_cov : 0;
+  P(1,1) = init_cov;
+  P(1,2) = 0;
+  P(1,3) = 0;
+  P(2,1) = 0;
+  P(2,2) = init_cov;
+  P(2,3) = 0;
+  P(3,1) = 0;
+  P(3,2) = 0;
+  P(3,3) = init_cov;
 
   /* inicializa el filtro con estado y covarianza iniciales */
   init(x0, P); /* NOTA: esta llamada utiliza las referencias de x0 y P */
@@ -225,7 +231,7 @@ bool robmovil_ekf::LocalizerEKF::find_corresponding_landmark(const tf2::Vector3&
 
   float min_distance = std::numeric_limits<float>::max();
 
-  for (size_t i = 0; i < map_landmarks.size(); i++)
+  for (int i = 0; i < map_landmarks.size(); i++)
   {
     float distance = measured_landmark.distance(map_landmarks[i]);
 
