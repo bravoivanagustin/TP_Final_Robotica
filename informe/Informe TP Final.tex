@@ -264,13 +264,64 @@ r = \sqrt{c_x^2 + c_y^2}, \qquad \varphi = \mathrm{atan2}(c_y, c_x)
 Las observaciones de los landmarks se publican en \texttt{/landmarks} como un mensaje \texttt{robmovil\_msgs/LandmarkArray}, en el marco del robot y con la marca del escaneo del cual provienen. Además, en \texttt{/landmark\_markers} se publican marcadores de cada poste para poder visualizarlos en RViz2.
 
 \subsection{Modelo del EKF}
+
+El filtro combina la odometría, que predice el movimiento del robot, y las observaciones de los postes, que permiten corregir esa estimación. En esta sección definimos lo que estima el filtro y los modelos que necesita para hacerlo. 
+
+\paragraph{Estado.} El filtro estima la pose del robot en el marco \texttt{map}:
+\begin{equation}
+\vec{x} = [p_x,\ p_y,\ \theta]^T
+\end{equation} 
+siendo $(p_x, p_y)$ la posición y $\theta$ la orientación.
+
+\paragraph{Predicción.} La odometría informa el movimiento del robot en cada paso, medido en su propio marco ($d_{x_b}$ hacia adelante, $d_{y_b}$ hacia el costado y $d\theta$ de giro). Los tres valores son la entrada de control del filtro: $\vec{u} = [d_{x_b},\ d_{y_b},\ d\theta]^T$. Se calculan multiplicando la velocidad de \texttt{/robot/odometry} por el tiempo $\Delta t$ entre dos mediciones.
+
+Para actualizar la pose, se rota  $(d_{x_b}, d_{y_b})$ con el ángulo $\theta$ y se suma a la pose anterior, de modo que quede expresada en el marco \texttt{map}:
+
+\begin{equation}
+f(\vec{x},\vec{u},\vec{w}) =
+\begin{bmatrix}
+p_x + d_{x_b}\cos\theta - d_{y_b}\sin\theta + w_x \\
+p_y + d_{x_b}\sin\theta + d_{y_b}\cos\theta + w_y \\
+\theta + d\theta + w_\theta
+\end{bmatrix}
+\end{equation}
+
+Como la odometría no es perfecta, se suma un ruido $\vec{w} = [w_x,\ w_y,\ w_\theta]^T$ gaussiano, de media 0 y covarianza $Q$.
+
+\paragraph{Corrección.} Como cada poste se encuentra en una posición conocida del mapa $(m_x, m_y)$, si el robot estuviera en la pose $\vec{x}$, debería medir el poste a una distancia $r$ y con un ángulo $\varphi$ respecto de su frente.
+
+\begin{equation}
+h(\vec{x},\vec{v}) =
+\begin{bmatrix}
+\sqrt{(m_x - p_x)^2 + (m_y - p_y)^2} + v_r \\
+\mathrm{atan2}(m_y - p_y,\ m_x - p_x) - \theta + v_\varphi
+\end{bmatrix}
+\end{equation}
+
+La medición esperada se compara con la medición del detector, $\vec{z} = [r,\ \varphi]^T$ (Sección~4.1). La diferencia entre ambas, llamada \emph{innovación}, se utiliza para corregir la pose. Notar que, como la medición real también tiene error, se le suma un ruido $\vec{v} = [v_r,\ v_\varphi]^T$ gaussiano, de media 0 y covarianza $R$.
+
+\paragraph{Linealización.} Como $f$ y $h$ no son lineales, el EKF las aproxima con los Jacobianos $J_f$ y $J_h$, que son las matrices de derivadas parciales de cada función con respecto a $\vec{x}$. 
+
+\begin{equation}
+J_f =
+\begin{bmatrix}
+1 & 0 & -d_{x_b}\sin\theta - d_{y_b}\cos\theta \\
+0 & 1 & \phantom{-}d_{x_b}\cos\theta - d_{y_b}\sin\theta \\
+0 & 0 & 1
+\end{bmatrix}
+\end{equation}
+y para el de sensado, con $d_x = m_x - p_x$, $d_y = m_y - p_y$ y $q = d_x^2 + d_y^2$:
+\begin{equation}
+J_h =
+\begin{bmatrix}
+-d_x/\sqrt{q} & -d_y/\sqrt{q} & 0 \\
+\phantom{-}d_y/q & -d_x/q & -1
+\end{bmatrix}
+\end{equation}
+
+La componente angular de la innovación se normaliza siempre al intervalo $(-\pi, \pi]$ para evitar discontinuidades.
+
 \begin{tareas}
-    \item \TODO{Definir el estado $\vec{x} = [p_x, p_y, \theta]^T$ (frame \texttt{map}).}
-    \item \TODO{Definir la entrada de control $\vec{u} = [d_{xb}, d_{yb}, d\theta]^T$ (deltas de odometría en frame body, obtenidos de \texttt{/robot/odometry}) y el ruido de actuador $\vec{w}$.}
-    \item \TODO{Definir la medición $\vec{z} = [r, \varphi]^T$ por landmark y el ruido de sensor $\vec{v}$.}
-    \item \TODO{Modelo de movimiento $f(\vec{x},\vec{u},\vec{w})$: $p_x' = p_x + d_{xb}\cos\theta - d_{yb}\sin\theta$, $p_y' = p_y + d_{xb}\sin\theta + d_{yb}\cos\theta$, $\theta' = \theta + d\theta$, y su Jacobiano $J_f$ ($3\times3$).}
-    \item \TODO{Modelo de sensado $h(\vec{x},\vec{v})$ por landmark $i$ en posición $(m_x,m_y)$ conocida: $r = \sqrt{(m_x-p_x)^2+(m_y-p_y)^2}$, $\varphi = \mathrm{atan2}(m_y-p_y, m_x-p_x) - \theta$, y su Jacobiano $J_h$ ($2\times3$).}
-    \item \TODO{Referenciar/citar el desarrollo completo ya hecho en \texttt{docs/03b\_ekf\_modelo\_matematico.md} y trasladarlo formalmente al informe.}
     \item \TODO{Aclarar que la implementación es propia con Eigen (no se usó la librería EKFilter mencionada en el anexo de la consigna) -- justificar la decisión.}
 \end{tareas}
 
@@ -282,12 +333,42 @@ Las observaciones de los landmarks se publican en \texttt{/landmarks} como un me
 \end{tareas}
 
 \subsection{Nodo EKF y asociación de datos}
-\begin{tareas}
-    \item \TODO{Describir el nodo \texttt{ekf\_localizer\_node}: mapa de postes conocido a priori desde \texttt{/posts} (frame \texttt{map}, no construido online -- a diferencia de lo visto en la cursada), predicción con \texttt{/robot/odometry} como control, corrección con \texttt{/landmarks}.}
-    \item \TODO{Explicar la asociación de datos (\emph{data association}): vecino más cercano (\emph{nearest-neighbor}) con umbral de gating \texttt{association\_max\_dist = 0.6 m}.}
-    \item \TODO{Explicar el manejo de la singularidad de $J_h$ cuando $r \to 0$ (se descartan observaciones con \texttt{range < 0.2 m}).}
-    \item \TODO{Detallar la publicación de salida: TF \texttt{map→base\_link\_ekf} y \texttt{nav\_msgs/Odometry} con covarianza en \texttt{/robot/odometry\_ekf}.}
-\end{tareas}
+
+El nodo \texttt{ekf\_localizer\_node} implementa el filtro. Trabaja con tres entradas y dos salidas.
+
+\paragraph{Entradas.}
+\begin{itemize}
+    \item \texttt{/posts}: el mapa de postes, publicado por el simulador en el marco \texttt{map}. No se construye durante la ejecución, sino que se recibe una sola vez y se guarda.
+    \item \texttt{/robot/odometry}: cada mensaje dispara un paso de \textbf{predicción}, con $\vec{u}$ calculado como en la Sección~4.2.
+    \item \texttt{/landmarks}: cada mensaje dispara un paso de \textbf{corrección} con las observaciones de la Sección~4.1.
+\end{itemize}
+
+La pose inicial se toma de la transformación  \texttt{map} $\rightarrow$ \texttt{base\_link} al empezar, y a partir de ahí comienza a funcionar el filtro. 
+
+\paragraph{Asociación de datos.} El detector entrega observaciones que, a priori, no se sabe a qué poste del mapa corresponden y el filtro usa ese dato para evaluar $h$. Para cada observación se hace lo siguiente: 
+\begin{enumerate}
+    \item Se la proyecta al marco \texttt{map} usando la pose estimada:
+    \begin{equation}
+    \ell_x = p_x + r\cos(\varphi + \theta), \qquad \ell_y = p_y + r\sin(\varphi + \theta)
+    \end{equation}
+    \item Se la asocia al poste del mapa más cercano a ese punto (\emph{nearest-neighbor}).
+    \item Si la distancia a ese poste supera un umbral de $0.6$~m (\emph{gating}), la observación se descarta por considerarse un falso positivo, es decir, algo que no es un poste del mapa.
+\end{enumerate}
+
+Además, si la observación tiene un rango menor a $0.2$~m, se descarta para evitar que el jacobiano $J_h$ diverja ($d_x/\sqrt{q}$ y $d_y/q$ con $q \to 0$).
+
+\paragraph{Corrección.} Cada observación aceptada es procesada de manera independiente, con el paso de corrección estándar del EKF. 
+
+\begin{align}
+S &= J_h P^- J_h^T + R \\
+K &= P^- J_h^T S^{-1} \\
+\vec{x}^+ &= \vec{x}^- + K\,(\vec{z} - h(\vec{x}^-)) \\
+P^+ &= (I - K J_h)\,P^-\,(I - K J_h)^T + K R K^T
+\end{align}
+
+Para $P^+$ se usa la forma de Joseph, que mantiene la matriz simétrica y definida positiva ante errores numéricos.
+
+\paragraph{Salidas.} Luego de cada predicción o corrección, el nodo publica la pose estimada como la transformación \texttt{map} $\rightarrow$ \texttt{base\_link\_ekf} y como un mensaje \texttt{nav\_msgs/Odometry} en \texttt{/robot/odometry\_ekf}, que incluye la covarianza $P$ del estado.
 
 \subsection{Experimentos}
 \begin{tareas}
