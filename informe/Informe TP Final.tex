@@ -210,11 +210,9 @@ Las velocidades resultantes se publican en \texttt{/robot/cmd\_vel} como un \tex
 \label{fig:lazo_cerrado}
 \end{figure}
 
-Al comenzar, el robot rota sobre su eje (con $v_x = v_y = 0$ y la misma ley para $\omega_z$) hasta que el error de orientación respecto del primer objetivo es menor a 0.08~rad ($\approx 4.6^\circ$). Esto se hace para evitar un pico inicial de velocidad angular, que provocaría el deslizamiento de las ruedas Mecanum.
-
 \subsection{Trayectoria cuadrada y \emph{pursuit-based following}}
 
-La trayectoria de referencia es un cuadrado centrado en el origen del mapa. El robot debe recorrerla en sentido antihorario, manteniendo siempre el frente hacia afuera del cuadrado, alejándose del centro. La orientación objetivo del robot en un punto $(x,y)$ de la trayectoria es la que va del centro a ese punto: 
+La trayectoria de referencia es un cuadrado centrado en el origen del mapa.{\renewcommand{\thefootnote}{\fnsymbol{footnote}}\footnote{El enunciado indica un cuadrado de 2~m de lado, pero en la figura de la consigna los vértices están en $(\pm 2, \pm 2)$, lo que corresponde a 4~m de lado. Para la implementación se tomaron los vértices de la figura.}} El robot debe recorrerla en sentido antihorario, manteniendo siempre el frente hacia afuera del cuadrado, alejándose del centro. La orientación objetivo del robot en un punto $(x,y)$ de la trayectoria es la que va del centro a ese punto: 
 
 \begin{equation}
 \theta_g = \mathrm{atan2}(y, x)
@@ -326,11 +324,35 @@ La componente angular de la innovación se normaliza siempre al intervalo $(-\pi
 \end{tareas}
 
 \subsection{Matrices de covarianza}
-\begin{tareas}
-    \item \TODO{Presentar y justificar $Q = \mathrm{diag}(0.15^2, 0.15^2, 0.15^2)$ (ruido de proceso) y $R = \mathrm{diag}(0.05^2, 0.03^2)$ (ruido de medición: rango y bearing).}
-    \item \TODO{Justificar por qué la incertidumbre de predicción debe ser mayor que la de medición (relación $Q/R$: \textasciitilde9x en posición, \textasciitilde25x en ángulo) para que la corrección con landmarks pese más.}
-    \item \TODO{Mencionar covarianza inicial $P_0 = I \cdot 0.01$ y de dónde se toma la pose inicial (TF \texttt{map→base\_link}).}
-\end{tareas}
+
+El filtro requiere tres matrices de covarianza: $Q$ para el ruido de la predicción, $R$ para el ruido de la medición y $P_0$ para la incertidumbre de la pose inicial. La consigna pide proponer matrices iniciales que reflejen una mayor incertidumbre al predecir la pose que al medir, de manera que la información de los sensores se considere más confiable. Todas las matrices son diagonales porque se asume que los errores de cada componente son independientes entre sí. 
+
+\paragraph{Ruido de proceso.}
+\begin{equation}
+Q = \mathrm{diag}(\sigma_x^2,\ \sigma_y^2,\ \sigma_\theta^2) = \mathrm{diag}(0.15^2,\ 0.15^2,\ 0.15^2)
+\end{equation}
+con $\sigma_x$ y $\sigma_y$ en metros y $\sigma_\theta$ en radianes. La matriz $Q$ se suma en cada paso de predicción, sin escalarla por $\Delta t$. Como se hace un paso de predicción por cada mensaje de odometría, y entre dos mensajes el robot se mueve muy poco, estos valores son bastante mayores que el error real de la odometría en un paso. Sobreestimar el error de la odometría tiene sentido porque las ruedas Mecanum patinan y ese error se acumula con cada paso. 
+
+\paragraph{Ruido de medición.}
+\begin{equation}
+R = \mathrm{diag}(\sigma_r^2,\ \sigma_\varphi^2) = \mathrm{diag}(0.05^2,\ 0.03^2)
+\end{equation}
+con $\sigma_r$ en metros y $\sigma_\varphi$ en radianes ($0.03$~rad $\approx 1.7^\circ$). El láser solo observa la cara del poste que queda frente al robot, por lo que el centroide del cluster no coincide con el centro del poste, sino que queda sobre esa cara. Por eso, la distancia medida puede ser algo menor que la real, en hasta el radio del poste ($5$~cm), que es del mismo orden que $\sigma_r$. 
+
+\paragraph{Relación entre $Q$ y $R$.}
+Si bien $Q$ describe errores en la pose del robot y $R$ errores en la medición, se pueden comparar porque unos se trasladan casi directamente a los otros. Si el robot está desplazado una cierta distancia en la dirección del poste, el rango medido cambia esa misma distancia, ya que la primera fila de $J_h$ es un vector unitario en esa dirección, y si el robot está girado un cierto ángulo, el ángulo medido cambia lo mismo pero con signo opuesto, debido al $-1$ de la segunda fila de $J_h$. Comparando las varianzas, la de la predicción es $0.15^2/0.05^2 = 9$ veces la de la medición en posición, y $0.15^2/0.03^2 = 25$ veces en ángulo.
+
+Esta relación determina cuánto se corrige la pose con cada observación. En el filtro, $P$ y $R$ son matrices, porque la pose tiene tres componentes y la medición dos. Sin embargo, la idea es más fácil de ver si se simplifica el problema a una sola variable, por ejemplo, solo la distancia al poste. En ese caso las matrices se reducen a una sola varianza cada una, y la ganancia de Kalman $K$ queda
+\begin{equation}
+K = \frac{P^-}{P^- + R}
+\end{equation}
+siendo $P^-$ la incertidumbre de la pose predicha y $R$ la de la medición. La pose corregida es $x^+ = x^- + K\,(z - h(x^-))$, es decir, la predicción sumada a una fracción $K$ de la diferencia entre la medición y la medición esperada. Si $P^-$ resulta mucho mayor que $R$, $K$ se acerca a 1 y la pose corregida queda casi donde indica la medición. Por el otro lado, si $P^-$ es mucho menor que $R$, $K$ se acerca a 0 y la medición casi no modifica la predicción. En cada paso de la predicción, se suma $Q$ a la covarianza, por lo que $P^-$ es al menos del tamaño de $Q$. Con los valores elegidos, si $P^- \approx 0.15^2$ y $R = 0.05^2$, resulta $K \approx 0.9$, lo que indica que la corrección lleva la estimación el $90\%$ del camino hacia la medición. De esta forma, en la corrección se considera más confiable la información del láser que la odometría, como se pedía en la consigna. 
+
+\paragraph{Covarianza inicial.}
+\begin{equation}
+P_0 = 0.01 \cdot I_3 = \mathrm{diag}(0.1^2,\ 0.1^2,\ 0.1^2)
+\end{equation}
+Es decir, al comenzar se supone un desvío de $0.1$~m en cada coordenada y de $0.1$~rad ($\approx 5.7^\circ$) en la orientación. La pose inicial del filtro proviene de la transformación \texttt{map} $\rightarrow$ \texttt{base\_link}. Si el filtro arranca antes de que el robot se mueva, la odometría todavía no acumuló error, y por eso la incertidumbre inicial se eligió chica. Además, este valor influye poco. Con el robot casi quieto, luego de la primera predicción cada varianza pasa de $0.01$ a $0.01 + 0.15^2 \approx 0.03$, y la mayor parte proviene de $Q$.
 
 \subsection{Nodo EKF y asociación de datos}
 
@@ -382,7 +404,7 @@ Para $P^+$ se usa la forma de Joseph, que mantiene la matriz simétrica y defini
 \section{Seguimiento de trayectorias a lazo cerrado utilizando localización basada en EKF}
 \begin{tareas}
     \item \TODO{Explicar la integración: el \texttt{trajectory\_follower} pasa a usar como feedback la transformación \texttt{map→base\_link\_ekf} en lugar de \texttt{map→base\_link} (parámetro \texttt{base\_frame}).}
-    \item \TODO{Presentar el comportamiento del sistema completo (seguimiento + localización EKF) siguiendo la trayectoria cuadrada de 2 m.}
+    \item \TODO{Presentar el comportamiento del sistema completo (seguimiento + localización EKF) siguiendo la trayectoria cuadrada de 4 m.}
     \item \TODO{Si fue necesario reajustar $k_{p,xy}$/$k_{p,yaw}$ para este caso, documentar los experimentos de reajuste y la justificación.}
     \item \TODO{Análisis comparativo: trayectoria efectivamente realizada por el robot vs. trayectoria requerida vs. ground truth.}
     \item \TODO{Capturas de RViz2 mostrando el elipsoide de covarianza del EKF en distintas porciones del recorrido (al menos en un tramo recto y en un vértice/giro).}
