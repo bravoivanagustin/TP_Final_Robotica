@@ -1,0 +1,56 @@
+# Manifiesto de una corrida experimental.
+# Barrido módulo 2 — punto central (kp_xy 0.8, kp_yaw 1.5).
+
+slug: 02_baseline
+fecha: 2026-11-22
+git_sha: 2a26cb5
+git_dirty: true
+descripcion: |
+  Punto central del barrido de constantes P: kp_xy=0.8, kp_yaw=1.5, lookahead 0.30.
+  Yaw "cardinal" (figura de la consigna): 90°, 180°, 270°, 360° en los vértices.
+
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+trayectoria:
+  tipo: cuadrado_2m
+  parametros:
+    lado: 2.0
+    kp_xy: 0.8
+    kp_yaw: 1.5
+    lookahead_distance: 0.30
+    yaw_convention: cardinal
+
+cmd_source:
+  tipo: closed_loop_launch
+  paquete: lazo_cerrado
+  archivo: lazo_cerrado.launch.py
+  args:
+    use_sim_time: true
+    kp_xy: 0.8
+    kp_yaw: 1.5
+    lookahead_distance: 0.30
+    goal_mode: PURSUIT
+    base_frame: base_link
+    square_half_side: 2.0
+
+duracion_maxima_s: 240
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /robot/trajectory
+  - /goal_pose
+  - /real_path
+  - /tf
+  - /tf_static
+
+notas_resumen: |

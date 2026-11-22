@@ -79,7 +79,7 @@ Criterio (consigna, ítem 3): Q mayor que R, para que el filtro confíe más en 
 - Q mayor: la odometría acumula error por el deslizamiento de las ruedas Mecanum (~0,9 m en una vuelta del cuadrado, módulo 2).
 - Referencia: en el taller 10 Q y R eran parecidos (~3 cm). Acá R baja porque el láser simulado es más preciso.
 
-Con estos valores, en el cuadrado con el EKF pasivo (`experiments/2026-11-22-ekf_cuadrado_q_grande`): error medio del EKF 1,2 cm contra 87 cm de la odometría.
+Con estos valores, en el cuadrado con el EKF pasivo (`experiments/03_cuadrado_odom`): error medio del EKF 1,2 cm contra 87 cm de la odometría.
 
 Q es constante por paso. La odometría sale con paso fijo de 50 ms, así que equivale a una incertidumbre que crece con el tiempo (también con el robot quieto, si no ve postes).
 
@@ -114,9 +114,9 @@ Todos con `scripts/run_experiment.sh` (`esperar_play: true`) y `scripts/plot_run
 
 | Corrida | Qué es | EKF vs GT (medio / máx) | Odometría al final |
 |---|---|---|---|
-| `ekf_circulo` | localización con velocidades constantes (consigna): círculo R = 1,5 m, 2 vueltas | 1,4 / 4,1 cm | 21 cm, 6,2° |
-| `ekf_cuadrado_q_grande` | cuadrado con el controlador sobre la odometría y el EKF pasivo | 1,2 / 1,8 cm | 87 cm, 19,6° |
-| `ekf_cuadrado_lazo` | cuadrado con el controlador sobre el EKF (ítem 5) | 1,2 / 2,3 cm | 1 m, 19° |
+| `03_circulo` | localización con velocidades constantes (consigna): círculo R = 1,5 m, 2 vueltas | 1,4 / 4,1 cm | 21 cm, 6,2° |
+| `03_cuadrado_odom` | cuadrado con el controlador sobre la odometría y el EKF pasivo | 1,2 / 1,8 cm | 87 cm, 19,6° |
+| `03_cuadrado_ekf` | cuadrado con el controlador sobre el EKF (ítem 5) | 1,2 / 2,3 cm | 1 m, 19° |
 
 Seguimiento (robot real vs referencia): con el EKF en el lazo 2,3 cm de error medio y llegada a 3,2 cm de `(-2, 2)`; con la odometría, 21,8 cm y 85,5 cm.
 
@@ -124,7 +124,7 @@ Covarianza:
 - Con postes a la vista oscila en serrucho entre ~0,6 cm (después de cada corrección, ~7 Hz) y ~3,5 cm (después de 2-3 predicciones, 20 Hz). Por eso las elipses de RViz tienen tamaños distintos: cada una cae en un instante distinto del ciclo.
 - En el círculo hay un tramo de ~6 s por vuelta sin postes a la vista: σ_xy sube hasta 24 cm y σ_θ hasta 6,4°, y cae a < 1 cm al volver a verlos. El error real en ese tramo sólo llega a ~4 cm: Q es conservador, como pide la consigna.
 
-Capturas de RViz (elipses 2σ ×10): `experiments/2026-11-22-ekf_cuadrado_lazo/plots/rviz_covarianza.png` y `experiments/2026-11-22-ekf_circulo/plots/rviz_covarianza.png`. Config: `coppeliaSim/tpfinal.rviz` (displays EKF y Postes detectados; el RobotModel dibuja la pose real, `base_link_gt`).
+Capturas de RViz (elipses 2σ ×10): `experiments/03_cuadrado_ekf/plots/rviz_covarianza.png` y `experiments/03_circulo/plots/rviz_covarianza.png`. Config: `coppeliaSim/tpfinal.rviz` (displays EKF y Postes detectados; el RobotModel dibuja la pose real, `base_link_gt`).
 
 ## Pendiente
 

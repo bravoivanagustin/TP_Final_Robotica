@@ -154,14 +154,13 @@ landmarks).
 
 | # | Ruta | Contenido |
 |---|---|---|
-| 1 | Grilla con los 5 `experiments/2026-11-22-cuadrado_cardinal_*/plots/xy_path.png` | Efecto de cada ganancia sobre la trayectoria real |
-| 2 | `experiments/2026-11-22-cuadrado_cardinal_kpyaw075/plots/goal_pose_vs_pose.png` | Tune elegido: pose vs setpoint en el tiempo |
-| 3 | `experiments/2026-11-22-cuadrado_cardinal_kpyaw075/plots/body_velocity.png` | Tune elegido: `vx`, `vy`, `wz` comandados |
-| 4 | `experiments/2026-11-22-cuadrado_cardinal_kpyaw075/plots/tracking_error.png` y `yaw_error.png` | Tune elegido: error de seguimiento en el tiempo |
-| 5 | `experiments/2026-11-22-cuadrado_cardinal_kpxy16/plots/xy_path.png` | Caso patológico: velocidad alta |
+| 1 | Grilla con los 5 `experiments/02_*/plots/xy_path.png` | Efecto de cada ganancia sobre la trayectoria real |
+| 2 | `experiments/02_kpyaw075/plots/goal_pose_vs_pose.png` | Tune elegido: pose vs setpoint en el tiempo |
+| 3 | `experiments/02_kpyaw075/plots/body_velocity.png` | Tune elegido: `vx`, `vy`, `wz` comandados |
+| 4 | `experiments/02_kpyaw075/plots/tracking_error.png` y `yaw_error.png` | Tune elegido: error de seguimiento en el tiempo |
+| 5 | `experiments/02_kpxy16/plots/xy_path.png` | Caso patológico: velocidad alta |
 
 La figura 1 no existe como un único PNG: hay que armarla con `subfigure` en el
 TeX o con un script.
 
-Los bags de estas corridas están en el release de GitHub `bags-m2-cardinal`
-(ese release también contiene las corridas de lookahead, descartadas del repo).
+Los bags de estas corridas están en el release de GitHub `bags-m2`.

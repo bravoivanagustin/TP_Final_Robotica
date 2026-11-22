@@ -219,7 +219,7 @@ El `docs/` es el registro durable de *qué es el proyecto*; `.claude/` es el reg
 
 ## Experiments framework
 
-Infra para **corridas reproducibles**: cada experimento vive en `experiments/YYYY-MM-DD-<slug>/` con `manifest.yaml` (parámetros declarativos), `bag/` (`rosbag2` SQLite, gitignored), `plots/` (PNGs generados, versionados) y `notes.md`.
+Infra para **corridas reproducibles**: cada experimento vive en `experiments/<carpeta>/` con `manifest.yaml` (parámetros declarativos), `bag/` (`rosbag2` SQLite, gitignored), `plots/` (PNGs generados, versionados) y `notes.md`.
 
 ```
 scripts/
@@ -242,12 +242,18 @@ experiments/
     └── notes.md
 ```
 
+Corridas del TP (definitivas, nombre `NN_<slug>` con NN = módulo; `new_experiment.sh` crea carpetas con fecha, se renombran al cerrar):
+- Módulo 1: `01_circular_1`, `01_circular_2`, `01_constante_1`, `01_constante_2`, `01_strafing`.
+- Módulo 2 (barrido de constantes P): `02_baseline`, `02_kpxy04`, `02_kpxy16`, `02_kpyaw075` (tune elegido), `02_kpyaw30`.
+- Módulo 3: `03_circulo` (localización, velocidades constantes), `03_cuadrado_odom` (controlador sobre odometría, EKF pasivo), `03_cuadrado_ekf` (controlador sobre el EKF).
+- Bags (gitignored) en los releases de GitHub `bags-m1`, `bags-m2`, `bags-m3`.
+
 Flujo típico:
 ```bash
 bash scripts/new_experiment.sh <slug> "descripción"
-# editar experiments/YYYY-MM-DD-<slug>/manifest.yaml
-bash scripts/run_experiment.sh experiments/YYYY-MM-DD-<slug>
-python3 scripts/plot_run.py experiments/YYYY-MM-DD-<slug>
+# editar experiments/<carpeta>/manifest.yaml
+bash scripts/run_experiment.sh experiments/<carpeta>
+python3 scripts/plot_run.py experiments/<carpeta>
 ```
 
 `cmd_source.tipo` en el manifest dispatcha el driver:

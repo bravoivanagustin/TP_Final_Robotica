@@ -1,0 +1,70 @@
+# Manifiesto de una corrida experimental.
+# Módulo 3, ítem 5 — cuadrado del módulo 2 con el controlador sobre la pose del EKF
+# (base_link_ekf), tune kp_xy 0.8 / kp_yaw 0.75,
+# con los Q y R elegidos (defaults de localizer.launch.py).
+
+slug: 03_cuadrado_ekf
+fecha: 2026-11-22
+git_sha: b92cf45
+git_dirty: true
+descripcion: "Seguimiento del cuadrado con el EKF en el lazo (base_frame base_link_ekf), Q y R elegidos"
+
+# Backend: odometría + detector + EKF.
+launch:
+  paquete: robmovil_ekf
+  archivo: localizacion_ekf.launch.py
+  args:
+    sigma_x: 0.02
+    sigma_y: 0.02
+    sigma_theta: 0.01
+    sigma_range: 0.01
+    sigma_bearing: 0.005
+
+esperar_play: true
+
+trayectoria:
+  tipo: cuadrado_2m
+  parametros:
+    lado: 2.0
+    kp_xy: 0.8
+    kp_yaw: 0.75
+    lookahead_distance: 0.30
+
+# Controlador sobre la pose del EKF.
+cmd_source:
+  tipo: closed_loop_launch
+  paquete: lazo_cerrado
+  archivo: lazo_cerrado.launch.py
+  args:
+    use_sim_time: true
+    kp_xy: 0.8
+    kp_yaw: 0.75
+    lookahead_distance: 0.30
+    goal_mode: PURSUIT
+    base_frame: base_link_ekf
+    square_half_side: 2.0
+
+duracion_maxima_s: 330
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/odometry_ekf
+  - /landmarks
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /robot/trajectory
+  - /goal_pose
+  - /tf
+  - /tf_static
+
+notas_resumen: |
+  Controlador sobre el EKF. Robot real vs referencia: 2.3 cm medio (máx 14.3 cm en
+  las esquinas), yaw 0.6°, llega a 3.2 cm de (-2, 2). Con el controlador sobre la
+  odometría (03_cuadrado_odom): 21.8 cm medio y 85.5 cm al final.
+  EKF vs GT: 1.2 cm medio (máx 2.3 cm). σ_xy oscila entre ~0.6 cm (después de
+  corregir) y ~3.5 cm (antes de corregir). Captura de RViz: plots/rviz_covarianza.png
+  (elipses 2σ ×10).

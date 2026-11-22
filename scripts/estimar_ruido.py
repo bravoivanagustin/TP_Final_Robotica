@@ -110,7 +110,7 @@ def main():
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
     todos_dr, todos_db, todos_rr = [], [], []
     for bag in a.bags:
-        nombre = Path(bag).parent.name.replace("2026-11-22-", "")
+        nombre = Path(bag).parent.name
         odom, gt, lms = cargar(bag)
         e = errores_odometria(odom, gt)
         taus = np.array(sorted(e))
