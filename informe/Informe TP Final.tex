@@ -355,12 +355,89 @@ De esta forma, el robot persigue un punto que siempre se encuentra a aproximadam
 
 
 \subsection{Experimentos}
-\begin{tareas}
-    \item \TODO{Barrido de constantes $k_{p,xy}$ y $k_{p,yaw}$ (al menos 2-3 valores cada una): gráficos de pose real vs. setpoint para cada corrida.}
-    \item \TODO{Gráfico de velocidades lineales/angular asignadas durante el experimento.}
-    \item \TODO{Análisis de los comportamientos observados (oscilación, tiempo de convergencia, overshoot) y justificación de la elección final de constantes (valores actuales por defecto: $k_{p,xy}=0.8$, $k_{p,yaw}=1.5$; a confirmar/ajustar según resultados).}
-    \item \TODO{Correr y documentar estos experimentos: el framework de automatización (\texttt{scripts/run\_experiment.sh}, \texttt{scripts/plot\_run.py}) existe en la rama \texttt{origin/main} pero los barridos de Kp todavía no están corridos/documentados.}
-\end{tareas}
+Para elegir las constantes del controlador, se realizaron corridas en las que el robot sigue la trayectoria cuadrada completa, utilizando la odometría como retroalimentación. Se probaron tres valores de $k_{p,xy}$ y tres de $k_{p,yaw}$, variando una constante a la vez y dejando la otra fija. Además, se probaron otros dos valores de \emph{lookahead}, ya que también influye en la velocidad del robot, y una combinación del mayor $k_{p,yaw}$ con el menor \emph{lookahead}. Se realizó una corrida por cada configuración.
+
+En la Tabla~\ref{tab:barrido} se resumen los resultados, donde $d$ es la distancia del robot real al cuadrado, $e_p$ y $e_\theta$ son los errores de posición y de orientación del robot real respecto del último punto de la trayectoria, y $\bar{e}_{\theta,odom}$ es el promedio del error de orientación que ve el controlador, es decir, el que se calcula con la odometría. La duración se mide en tiempo de simulación, desde el primer comando hasta que el controlador da por terminada la trayectoria.
+
+\begin{table}[h]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{ccccccccc}
+\toprule
+$k_{p,xy}$ & $k_{p,yaw}$ & \emph{lookahead} [m] & Duración [s] & $d$ medio [m] & $d$ máx. [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{\theta,odom}$ \\
+\midrule
+$0.4$ & $1.5$ & $0.30$ & $123$ & $0.20$ & $0.53$ & $0.88$ & $19.6^\circ$ & $2.2^\circ$ \\
+$0.8$ & $1.5$ & $0.30$ & $64$ & $0.27$ & $0.70$ & $1.14$ & $27.0^\circ$ & $4.4^\circ$ \\
+$1.6$ & $1.5$ & $0.30$ & $38$ & $0.41$ & $1.14$ & $1.60$ & $40.4^\circ$ & $8.4^\circ$ \\
+\midrule
+$0.8$ & $0.75$ & $0.30$ & $64$ & $0.26$ & $0.70$ & $1.14$ & $26.7^\circ$ & $8.9^\circ$ \\
+$0.8$ & $3.0$ & $0.30$ & $65$ & $0.22$ & $0.57$ & $0.85$ & $19.0^\circ$ & $2.1^\circ$ \\
+\midrule
+$0.8$ & $1.5$ & $0.15$ & $116$ & $0.21$ & $0.58$ & $1.03$ & $23.2^\circ$ & $2.3^\circ$ \\
+$0.8$ & $1.5$ & $0.60$ & $37$ & $0.43$ & $1.16$ & $1.71$ & $42.8^\circ$ & $8.6^\circ$ \\
+$0.8$ & $3.0$ & $0.15$ & $116$ & $0.21$ & $0.59$ & $1.04$ & $23.0^\circ$ & $1.2^\circ$ \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de las corridas con distintas constantes.}
+\label{tab:barrido}
+\end{table}
+
+En la Figura~\ref{fig:lazo_tray} se muestran las trayectorias. En todas las corridas, la trayectoria estimada sigue al cuadrado y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada. Esto se debe a que el controlador corrige el error respecto de la odometría, por lo que no puede detectar el error propio de la odometría que se vio en la Sección~2.4. También se ve que la trayectoria estimada recorta las esquinas, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice. El recorte aumenta con el \emph{lookahead}, con un máximo de $0.07$~m, $0.14$~m y $0.28$~m para $0.15$~m, $0.30$~m y $0.60$~m respectivamente.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/lazo_trayectorias.pdf}
+\caption{Trayectoria deseada, estimada por la odometría y real.}
+\label{fig:lazo_tray}
+\end{figure}
+
+\subsubsection{Variación de $k_{p,xy}$}
+
+En la Figura~\ref{fig:lazo_kpxy} se muestran la pose objetivo, la estimada y la real para los tres valores de $k_{p,xy}$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/lazo_kpxy.pdf}
+\caption{Pose objetivo, estimada por la odometría y real para distintos valores de $k_{p,xy}$.}
+\label{fig:lazo_kpxy}
+\end{figure}
+
+El objetivo siempre está a una distancia de aproximadamente $0.30$~m del robot, de manera que el error de posición que ve el controlador es casi constante y $k_{p,xy}$ determina la velocidad. El promedio de la velocidad lineal comandada fue de $0.13$~m/s, $0.26$~m/s y $0.51$~m/s para $k_{p,xy}$ de $0.4$, $0.8$ y $1.6$ respectivamente. Es decir, al duplicar la constante se duplica la velocidad y la duración se reduce a casi la mitad. Sin embargo, el error del robot real aumenta, ya que el error final de posición pasa de $0.88$~m a $1.60$~m y el de orientación de $19.6^\circ$ a $40.4^\circ$. Al igual que en la Sección~2.4, el error de la odometría es mayor a velocidades más altas. Las corridas en las que se cambió el \emph{lookahead} muestran el mismo comportamiento, porque al cambiar la distancia al objetivo también cambia la velocidad.
+
+\subsubsection{Variación de $k_{p,yaw}$}
+
+En la Figura~\ref{fig:lazo_kpyaw} se muestran los resultados para los tres valores de $k_{p,yaw}$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/lazo_kpyaw.pdf}
+\caption{Pose objetivo, estimada por la odometría y real para distintos valores de $k_{p,yaw}$.}
+\label{fig:lazo_kpyaw}
+\end{figure}
+
+La orientación objetivo cambia a lo largo de todo el recorrido, por lo que el robot siempre la sigue con un retraso. De la ley de control~\eqref{eq:ley_control}, para girar a una velocidad $\omega_z$ se necesita un error $e_\theta = \omega_z / k_{p,yaw}$, es decir, el retraso se reduce a la mitad al duplicar la constante. Con una velocidad angular promedio de $0.12$~rad/s, este error debería ser de unos $9.2^\circ$, $4.6^\circ$ y $2.3^\circ$ para $k_{p,yaw}$ de $0.75$, $1.5$ y $3.0$ respectivamente, y los valores obtenidos fueron de $8.9^\circ$, $4.4^\circ$ y $2.1^\circ$. La duración no cambia, ya que depende de la velocidad lineal.
+
+El error del robot real fue prácticamente el mismo con $k_{p,yaw}$ de $0.75$ y $1.5$, pero con $3.0$ el error final de posición bajó de $1.14$~m a $0.85$~m y el de orientación de $27.0^\circ$ a $19.0^\circ$.
+
+\subsubsection{Velocidades asignadas}
+
+En la Figura~\ref{fig:lazo_vel} se muestran las velocidades asignadas por el controlador durante las corridas.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figuras/lazo_velocidades.pdf}
+\caption{Velocidades asignadas por el controlador para distintos valores de las constantes.}
+\label{fig:lazo_vel}
+\end{figure}
+
+Al comenzar, el robot está orientado a $90^\circ$ y la orientación objetivo es de unos $140^\circ$, por lo que se produce un pico en $\omega_z$ que es proporcional a $k_{p,yaw}$ y que alcanza $2.6$~rad/s para $k_{p,yaw} = 3.0$. Luego, $\omega_z$ se mantiene alrededor de $0.11$~rad/s cuando $k_{p,xy} = 0.8$. Durante cada lado del cuadrado, $v_y$ se mantiene positiva y $v_x$ cambia de signo, porque el robot avanza de costado mientras gira para mantener el frente hacia afuera. Los cambios bruscos de $v_x$ corresponden a los vértices, en los que cambia la dirección del movimiento. Además, se ve una oscilación rápida en las velocidades lineales, que se debe a que el objetivo avanza de a un waypoint. Al hacerlo, la distancia al objetivo cambia en $0.05$~m y, con $k_{p,xy} = 0.8$, la velocidad cambia en $0.04$~m/s.
+
+\subsubsection{Elección de las constantes}
+
+Se eligieron $k_{p,xy} = 0.8$, $k_{p,yaw} = 3.0$ y un \emph{lookahead} de $0.30$~m. Es la configuración que obtuvo el menor error final, tanto en posición como en orientación. Con $k_{p,xy} = 0.4$ los errores fueron similares, pero el recorrido tardó casi el doble. Por otro lado, reducir el \emph{lookahead} a $0.15$~m también duplica la duración y, en combinación con $k_{p,yaw} = 3.0$, no mejoró el resultado.
+
+El error que queda no puede corregirse ajustando las constantes, ya que el controlador sigue correctamente a la pose estimada y es esta última la que se aparta de la real. Para reducirlo, es necesario mejorar la estimación de la pose, como se propone en la Sección~\ref{sec:ekf}.
 
 % =====================================================================
 \section{Localización basada en EKF}
