@@ -31,11 +31,14 @@ The TP demands **three ROS 2 nodes** in addition to the message package and URDF
    - Tune elegido del barrido cardinal: `lookahead_distance=0.15` (con `kp_xy=0.8`, `kp_yaw` 1.5 o 0.75). Ver `docs/02b_experimentos_informe_draft.md`.
    - Launchers: `launch/lazo_cerrado.launch.py` (controller + generator) y `launch/seguimiento_odom.launch.py` (combo con odometría del módulo 1 en un solo proceso).
    - Deep dive: `docs/02_lazo_cerrado.md`.
-3. **Localización basada en EKF** (`ekf_localizer/`, **implemented**)
-   - Dos sub-nodos: `landmark_detector_node` (clustering de `/robot/front_laser/scan` → `/landmarks` en frame robot) y `ekf_localizer_node` (EKF con Eigen, predict desde `/robot/odometry` y update desde `/landmarks` matcheados contra `/posts` del sim).
-   - Publica TF `map → base_link_ekf` y `/robot/odometry_ekf`. El mapa de postes (16, Ø 0.1 m) es **a priori** desde `/posts` (`geometry_msgs/PoseArray` en frame `map`).
-   - Launcher combo `launch/seguimiento_ekf.launch.py`: levanta odometría + landmark_detector + EKF + controller cerrando el lazo con `base_frame:=base_link_ekf`.
-   - Deep dives: `docs/00_decisiones_modulo3.md`, `docs/03_ekf_localizer_plan.md`, `docs/03b_ekf_modelo_matematico.md`, `docs/modulo3_etapa_{A,B,C,D}_*.md`.
+3. **Localización basada en EKF** (`robmovil_ekf/` + `kfilter/`, **implemented**)
+   - Sobre la librería `EKFilter` de los talleres (`kfilter/`), con `EKFilter(3, 3, 3, 2, 2)` como pide el anexo. Esqueleto del taller 10 adaptado al omnidireccional.
+   - Dos nodos: `landmark_detector_node` (clustering de `/robot/front_laser/scan` → `/landmarks` en `base_link`) y `localizer` (predict con el twist de `/robot/odometry`, update con `/landmarks` asociados por vecino más cercano contra `/posts`).
+   - Publica TF `map → base_link_ekf` y `/robot/odometry_ekf` (con covarianza). El mapa de postes (16, grilla cada 2 m) es **a priori** desde `/posts`.
+   - **`/posts` llega UNA vez, al dar play, con QoS volatile** → el nodo se suscribe volatile y tiene que estar levantado **antes** del play.
+   - **`map → odom` lo publica el sim** (pose de spawn `(-2, 2, π/2)`); ningún launcher nuestro la publica. El EKF se inicializa leyendo `map → base_link`.
+   - Launchers: `localizer.launch.py` (detector + EKF, σ por arg) y `seguimiento_ekf.launch.py` (odometría + detector + EKF + controller con `base_frame:=base_link_ekf`).
+   - Deep dive: `docs/03_ekf.md`.
 
 Package names suggested by `herramientas_robotica/pasos_docker` (`lazo_abierto`, `lazo_cerrado`, `imu_laser`, `robmovil_ekf`, `astar_planning`) appear to be leftovers from earlier talleres; only some map onto TP-Final deliverables. Confirm before creating skeletons.
 
@@ -150,13 +153,9 @@ The `sim_ros2_interface` plugin must be patched to know about `robmovil_msgs` AN
 
 Then: `colcon build --packages-select sim_ros2_interface`.
 
-## EKF library setup (when implementing module 3)
+## EKF library setup
 
-The course's `EKFilter` template requires matrix dimensions at construction. For the omnidirectional model — control input is 3-DoF `[vₓ, v_y, ω_z]` instead of the differential-drive `[v, ω]` — the constructor in `robmovil_ekf::LocalizerEKF` must read:
-```cpp
-robmovil_ekf::LocalizerEKF::LocalizerEKF(void) : EKFilter(3, 3, 3, 2, 2)
-```
-(vs. the differential-drive default of `EKFilter(3, 2, 3, 2, 2)`). This is called out in the spec annex.
+The course's `EKFilter` template requires matrix dimensions at construction. For the omnidirectional model — control input is 3-DoF `[vₓ, v_y, ω_z]` instead of the differential-drive `[v, ω]` — the constructor in `robmovil_ekf/src/localizer_ekf.cpp` reads `EKFilter(3, 3, 3, 2, 2)` (vs. the differential-drive default of `EKFilter(3, 2, 3, 2, 2)`), as called out in the spec annex. `makeBaseQ()`/`makeBaseR()` are evaluated once, on the first filter step, so noise params must be set before it.
 
 ## Architecture
 
@@ -174,10 +173,11 @@ robmovil_ekf::LocalizerEKF::LocalizerEKF(void) : EKFilter(3, 3, 3, 2, 2)
   - Ejecutables `trajectory_follower` + `trajectory_generator`.
   - Launchers `lazo_cerrado.launch.py` (controller+generator) y `seguimiento_odom.launch.py` (combo con módulo 1).
   - Deep dive: `docs/02_lazo_cerrado.md`.
-- **`ekf_localizer/`** — localización EKF del módulo 3 (ver §Required deliverables #3):
-  - Ejecutables `landmark_detector_node` + `ekf_localizer_node`.
+- **`robmovil_ekf/`** — localización EKF del módulo 3 (ver §Required deliverables #3):
+  - Ejecutables `landmark_detector_node` + `localizer`.
   - Launcher combo `seguimiento_ekf.launch.py`: odometría + detector + EKF + controller con `base_frame:=base_link_ekf`.
-  - Deep dives: `docs/00_decisiones_modulo3.md`, `docs/03*_ekf_*.md`, `docs/modulo3_etapa_*.md`.
+  - Deep dive: `docs/03_ekf.md`.
+- **`kfilter/`** — librería `EKFilter` de la cátedra (header-only + `kstatics.cpp`), sin modificar.
 - **`URDF/`** — `nashe.urdf` plus Collada meshes for body, Hokuyo URG-04LX laser, and the four Swedish wheels.
 - **`coppeliaSim/`** — `omni_ekf.ttt` (única escena; es la que antes se llamaba `omni_ekf_v2.ttt`, spawn en `(-2, +2)` con yaw π/2), `tpfinal.rviz` (RViz config). Binary, not built.
 - **`informe/`** — informe final en TeX (`Informe TP Final.tex` + `UBA.png` para la carátula).
@@ -202,13 +202,8 @@ docs/
 ├── REPORT.md                            ← guide for writing the final TP report
 ├── 01_modelo_holonomico.md              ← módulo 1: contrato, bugs, validación
 ├── 02_lazo_cerrado.md                   ← módulo 2: controller + generator + launchers
-├── 00_decisiones_modulo3.md             ← módulo 3: decisiones de alto nivel
-├── 03_ekf_localizer_plan.md             ← módulo 3: plan de implementación
-├── 03b_ekf_modelo_matematico.md         ← módulo 3: derivación Jacobianos y update
-├── modulo3_etapa_A_landmark_detector.md ← módulo 3 etapa A: clustering del laser
-├── modulo3_etapa_B_modelado_ekf.md      ← módulo 3 etapa B: modelo + ecuaciones
-├── modulo3_etapa_C_nodo_ekf.md          ← módulo 3 etapa C: implementación del nodo
-└── modulo3_etapa_D_integracion.md       ← módulo 3 etapa D: launcher combo + validación
+├── 02b_experimentos_informe_draft.md    ← módulo 2: barrido cardinal, borrador para el informe
+└── 03_ekf.md                            ← módulo 3: modelo, Jacobianos, nodos, integración con el sim
 informe/
 ├── Informe TP Final.tex                 ← informe final (TeX)
 └── UBA.png                              ← logo para la carátula

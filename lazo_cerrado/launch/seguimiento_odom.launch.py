@@ -12,7 +12,7 @@ def generate_launch_description():
     # evitar la coreografia de dos terminales ('ros2 launch modelo_holonomico ...'
     # en una + 'ros2 launch lazo_cerrado ...' en otra).
     #
-    # Paralelo a ekf_localizer/launch/seguimiento_ekf.launch.py, que hace lo
+    # Paralelo a robmovil_ekf/launch/seguimiento_ekf.launch.py, que hace lo
     # mismo pero cerrando el lazo sobre base_link_ekf en vez de base_link.
     #
     # Args expuestos arriba (default sensato para que el launcher sin overrides

@@ -1,4 +1,4 @@
-#include "ekf_localizer/LandmarkDetector.h"
+#include "landmark_detector.h"
 
 int main(int argc, char** argv)
 {

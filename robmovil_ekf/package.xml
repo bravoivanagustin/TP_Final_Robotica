@@ -9,7 +9,10 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>robmovil_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>tf2</depend>
@@ -18,7 +21,6 @@
   <depend>angles</depend>
   <depend>kfilter</depend>
 
-  <exec_depend>ekf_localizer</exec_depend>
   <exec_depend>modelo_holonomico</exec_depend>
   <exec_depend>lazo_cerrado</exec_depend>
 

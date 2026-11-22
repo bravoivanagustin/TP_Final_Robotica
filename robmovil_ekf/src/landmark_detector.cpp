@@ -1,4 +1,4 @@
-#include "ekf_localizer/LandmarkDetector.h"
+#include "landmark_detector.h"
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 

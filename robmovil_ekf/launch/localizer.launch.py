@@ -21,7 +21,7 @@ def generate_launch_description():
 
         # Landmark detector (publica /landmarks en el frame base_link)
         Node(
-            package="ekf_localizer",
+            package="robmovil_ekf",
             executable="landmark_detector_node",
             name="landmark_detector",
             output="screen",

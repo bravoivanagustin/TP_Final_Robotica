@@ -159,7 +159,7 @@ ros2 launch lazo_cerrado seguimiento_odom.launch.py
 ros2 launch lazo_cerrado seguimiento_odom.launch.py kp_xy:=1.6 kp_yaw:=0.75
 ```
 
-**Args expuestos** (los defaults son los mismos que `lazo_cerrado.launch.py`): `use_sim_time`, `kp_xy`, `kp_yaw`, `goal_mode`. El resto (`lookahead_distance`, `position_tolerance`, `square_half_side`, etc.) heredan los defaults internos de `lazo_cerrado.launch.py`; si en algún barrido hay que mutarlos, se agregan al combo en una línea cada uno. El `base_frame` queda hardcodeado en `base_link` — para cerrar el lazo sobre la pose del EKF hay que usar `ekf_localizer/launch/seguimiento_ekf.launch.py` (paralelo al combo odom, pero con todo el stack del módulo 3).
+**Args expuestos** (los defaults son los mismos que `lazo_cerrado.launch.py`): `use_sim_time`, `kp_xy`, `kp_yaw`, `goal_mode`. El resto (`lookahead_distance`, `position_tolerance`, `square_half_side`, etc.) heredan los defaults internos de `lazo_cerrado.launch.py`; si en algún barrido hay que mutarlos, se agregan al combo en una línea cada uno. El `base_frame` queda hardcodeado en `base_link` — para cerrar el lazo sobre la pose del EKF hay que usar `robmovil_ekf/launch/seguimiento_ekf.launch.py` (paralelo al combo odom, pero con todo el stack del módulo 3).
 
 **Cuándo usarlo**:
 - Barridos de `kp_xy`/`kp_yaw` para el reporte: lo que menos querés es gimnasia de terminales entre corridas.
