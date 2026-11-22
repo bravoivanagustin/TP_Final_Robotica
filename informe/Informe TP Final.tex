@@ -157,12 +157,133 @@ y &\leftarrow y + \Delta x_b\sin\theta + \Delta y_b\cos\theta\\
 La pose se inicializa en el origen del marco \texttt{odom}. Al procesar cada lectura de los encoders, el nodo publica la pose estimada y la velocidad del robot como un mensaje \texttt{nav\_msgs/Odometry} en el tópico \texttt{/robot/odometry}, y la pose como la transformación \texttt{odom} $\rightarrow$ \texttt{base\_link} en \texttt{/tf}. En ambos casos, la referencia del tiempo proviene de la lectura de los encoders. 
 
 \subsection{Experimentos}
-\begin{tareas}
-    \item \TODO{Gráfico: velocidades lineales y angular \emph{comandadas} vs. velocidades \emph{reales} ejercidas por el robot (comparación).}
-    \item \TODO{Gráfico: pose estimada por odometría vs. pose real (ground truth \texttt{odom→base\_link\_gt}).}
-    \item \TODO{Usar/adaptar los scripts de \texttt{scripts/plot\_run.py} (\texttt{odom\_vs\_cmd}, \texttt{xy\_path}) si ya están disponibles en la rama de trabajo; si no, correr los experimentos correspondientes.}
-    \item \TODO{Analizar el error observado y su causa (deslizamiento, discretización de encoders, etc.).}
-\end{tareas}
+Se realizaron dos tipos de experimentos. El primero compara las velocidades de los comandos contra las velocidades reales del robot. El segundo compara la pose estimada por la odometría contra la pose real del robot. En ambos casos, los valores reales se obtienen de la transformación \texttt{odom} $\rightarrow$ \texttt{base\_link\_gt} publicada por el simulador. 
+
+Para evaluar los distintos movimientos, se realizaron corridas a lazo abierto, en las que se publicó una velocidad constante en \texttt{/robot/cmd\_vel} durante un tiempo fijo. Las corridas se resumen en la Tabla~\ref{tab:corridas_modelo}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Corrida} & $v_x$ [m/s] & $v_y$ [m/s] & $\omega_z$ [rad/s] & \textbf{Duración} [s] \\
+\midrule
+Lateral & $0$ & $-0.3$ & $0$ & $4$ \\
+Circular lenta & $0.15$ & $0$ & $-0.3$ & $22$ \\
+Circular rápida & $0.3$ & $0$ & $-0.3$ & $23$ \\
+Lateral con giro & $0$ & $0.1$ & $0.1$ & $10$ \\
+Combinada & $0.1$ & $0.1$ & $0.1$ & $10$ \\
+\bottomrule
+\end{tabular}
+\caption{Consignas de velocidad de las corridas a lazo abierto.}
+\label{tab:corridas_modelo}
+\end{table}
+
+La corrida lateral evalúa el desplazamiento en $y$, propio del robot omnidireccional.
+
+En las corridas circulares se comandan a la vez una velocidad de avance $v_x$ y una velocidad de giro $\omega_z$, ambas constantes, por lo que el robot debería describir una circunferencia de radio $R = v_x/|\omega_z|$. Como $\omega_z$ es negativa, el recorrido es en sentido horario. Las dos corridas tienen la misma velocidad de giro, y en la rápida la velocidad de avance es el doble, por lo que el radio pasa de $0.5$~m a $1$~m. En ambas, una vuelta completa demora $2\pi/|\omega_z| \approx 20.9$~s, de manera que el robot recorre algo más de una vuelta. Esto permite comparar el efecto de la velocidad de avance sobre el error, con el mismo giro.
+
+Las dos últimas corridas combinan desplazamiento lateral con giro, y en la combinada se comandan las tres velocidades a la vez. 
+
+\subsubsection{Velocidades comandadas y reales}
+
+El simulador informa la pose real del robot, por lo que la velocidad real se calcula a partir de la diferencia entre poses consecutivas, dividida por el tiempo entre poses. Las velocidades lineales se rotaron según la orientación para poder expresarlas en el marco del robot y compararlas contra las velocidades comandadas. 
+
+Además de la velocidad comandada y la real, se graficó la velocidad estimada por la odometría, que se calcula a partir del giro de las ruedas y, por lo tanto, no detecta el deslizamiento. La diferencia entre las velocidades comandada y estimada muestra qué tanto las ruedas siguen la consigna, mientras que la diferencia entre la estimada y la real muestra en qué medida el giro de las ruedas se traduce en movimiento del robot. 
+
+En la Figura~\ref{fig:modelo_vel} se muestran las velocidades de las corridas lateral, circular rápida y combinada. A su vez, en la Tabla~\ref{tab:vel_modelo} se resumen los promedios de las velocidades de las cinco corridas, sin tener en cuenta el primer segundo ni los últimos $0.2$~s, para descartar el arranque y el frenado del robot. Solo se incluyen las componentes que fueron comandadas en cada corrida.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/modelo_velocidades.pdf}
+\caption{Velocidades comandadas, estimadas por la odometría y reales. El comando se empieza a publicar en $t = 0$.}
+\label{fig:modelo_vel}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{llccc}
+\toprule
+\textbf{Corrida} & \textbf{Componente} & \textbf{Comandada} & \textbf{Odometría} & \textbf{Real} \\
+\midrule
+Lateral & $v_y$ [m/s] & $-0.300$ & $-0.285$ & $-0.269$ \\
+Circular lenta & $v_x$ [m/s] & $0.150$ & $0.146$ & $0.144$ \\
+ & $\omega_z$ [rad/s] & $-0.300$ & $-0.289$ & $-0.289$ \\
+Circular rápida & $v_x$ [m/s] & $0.300$ & $0.283$ & $0.275$ \\
+ & $\omega_z$ [rad/s] & $-0.300$ & $-0.270$ & $-0.273$ \\
+Lateral con giro & $v_y$ [m/s] & $0.100$ & $0.099$ & $0.098$ \\
+ & $\omega_z$ [rad/s] & $0.100$ & $0.098$ & $0.100$ \\
+Combinada & $v_x$ [m/s] & $0.100$ & $0.097$ & $0.095$ \\
+ & $v_y$ [m/s] & $0.100$ & $0.097$ & $0.095$ \\
+ & $\omega_z$ [rad/s] & $0.100$ & $0.097$ & $0.100$ \\
+\bottomrule
+\end{tabular}
+\caption{Promedios de las velocidades comandadas, estimadas por la odometría y reales.}
+\label{tab:vel_modelo}
+\end{table}
+
+En todas las corridas, el robot se mueve en la dirección y el sentido comandados, y las componentes que no se comandan se mantienen cercanas a cero. Sin embargo, las velocidades lineales reales resultan algo menores que las comandadas, y la diferencia es mayor cuando la velocidad es más alta. Por ejemplo, en la corrida combinada, en la que se comandan $0.1$~m/s en cada eje, la diferencia es de $0.005$~m/s, mientras que en la lateral, con $0.3$~m/s, es de $0.031$~m/s.
+
+Esta diferencia se puede separar en dos partes. Por un lado, las ruedas no llegan a la velocidad comandada, lo que se ve en que la velocidad lineal estimada es menor que la comandada. Por el otro lado, el robot se desplaza menos de lo que indican sus ruedas, ya que la velocidad lineal real es, a su vez, menor que la estimada. En la corrida lateral, cada una de estas partes representa aproximadamente la mitad de la diferencia. En cambio, la velocidad angular real es igual o algo mayor, en módulo, que la estimada.
+
+Además, la velocidad estimada presenta oscilaciones, que se deben principalmente a la resolución de los encoders. El tiempo entre dos lecturas es de $0.05$~s, de manera que un solo tick de diferencia en una rueda modifica la velocidad lineal estimada en unos $0.003$~m/s y la angular en unos $0.009$~rad/s.
+
+\subsubsection{Pose estimada por odometría y pose real}
+
+Para evaluar la odometría, se comparó la trayectoria en el plano y la orientación estimadas contra las reales. El error de posición y el de orientación se calcularon como
+\begin{align}
+e_p &= \sqrt{(x_{odom} - x_{gt})^2 + (y_{odom} - y_{gt})^2}\\
+e_\theta &= \theta_{odom} - \theta_{gt}
+\end{align}
+donde el subíndice $gt$ indica los valores reales informados por el simulador y $e_\theta$ se normaliza al intervalo $(-\pi, \pi]$.
+
+En la Figura~\ref{fig:modelo_tray} se muestran las trayectorias de cada corrida, en la Figura~\ref{fig:modelo_ori} las orientaciones y en la Tabla~\ref{tab:error_odom} se resumen los errores. Todas las poses están expresadas en el marco \texttt{odom}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/modelo_trayectorias.pdf}
+\caption{Trayectorias estimadas por la odometría y reales.}
+\label{fig:modelo_tray}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/modelo_orientacion.pdf}
+\caption{Orientaciones estimadas por la odometría y reales. La escala vertical es distinta en cada corrida.}
+\label{fig:modelo_ori}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Corrida} & \textbf{Recorrido real} [m] & $e_p$ \textbf{final} [cm] & $e_p$ \textbf{máximo} [cm] & $e_\theta$ \textbf{final} \\
+\midrule
+Lateral & $1.08$ & $7.2$ & $7.3$ & $3.3^\circ$ \\
+Circular lenta & $3.18$ & $0.5$ & $1.5$ & $0.1^\circ$ \\
+Circular rápida & $6.32$ & $8.3$ & $11.6$ & $4.4^\circ$ \\
+Lateral con giro & $0.98$ & $1.9$ & $1.9$ & $-1.4^\circ$ \\
+Combinada & $1.35$ & $3.0$ & $3.1$ & $-1.6^\circ$ \\
+\bottomrule
+\end{tabular}
+\caption{Errores de la odometría respecto de la pose real.}
+\label{tab:error_odom}
+\end{table}
+
+En todas las corridas, la trayectoria estimada tiene la misma forma que la real. En la lateral, la mayor parte del error está en la dirección del movimiento, ya que la odometría estima un desplazamiento de $1.15$~m mientras que el robot se desplaza $1.08$~m. A su vez, el robot termina girado $2.4^\circ$ en sentido horario, pero la odometría estima un giro de $0.9^\circ$ en sentido antihorario.
+
+En las circulares se puede ver el efecto de la velocidad de avance. Al duplicarla, el recorrido también se duplica, pero el error máximo pasa de $1.5$~cm a $11.6$~cm. En estas corridas el error final es menor que el máximo porque el robot vuelve cerca del punto de partida, de manera que parte del error acumulado se compensa.
+
+\subsubsection{Análisis del error}
+
+La resolución de los encoders no alcanza para explicar estos errores. Como los encoders son absolutos, el error de redondeo de cada rueda no se acumula y es del orden de un tick ($0.63$~mm), mientras que los errores de posición son del orden de centímetros.
+
+Tampoco se explican por la forma en la que se integra la pose. En cada paso, los desplazamientos se rotan según la orientación que tenía el robot al comenzar el paso, si bien la orientación cambia durante el mismo. Para evaluar este efecto, se repitió el cálculo utilizando la orientación en la mitad de cada paso, y el error máximo cambió, a lo sumo, en $0.5$~cm.
+
+Por otro lado, si el radio de las ruedas fuera distinto al utilizado, la velocidad lineal estimada y la real diferirían siempre en la misma proporción. Sin embargo, la real es un $1.2\%$ menor que la estimada en la circular lenta, un $3.0\%$ en la circular rápida y un $5.6\%$ en la lateral. Es decir, la diferencia aumenta con la velocidad y es mayor en el desplazamiento lateral, lo que es compatible con el deslizamiento de las ruedas, que los encoders no pueden detectar.
+
+La odometría no tiene forma de corregir este error, que se acumula a medida que el robot avanza. Por eso, se la utiliza en conjunto con las observaciones de los postes en el EKF de la Sección~\ref{sec:ekf}.
+
+
 
 % =====================================================================
 \section{Control a lazo cerrado y seguimiento de trayectorias}
@@ -243,6 +364,7 @@ De esta forma, el robot persigue un punto que siempre se encuentra a aproximadam
 
 % =====================================================================
 \section{Localización basada en EKF}
+\label{sec:ekf}
 \subsection{Detección de landmarks (postes)}
 
 Para corregir la estimación de la pose del robot, se utilizan los postes del mapa como referencias (\emph{landmarks}). El nodo \texttt{landmark\_detector} recibe las lecturas del láser por \texttt{/robot/front\_laser/scan} y detecta los postes mediante clusterización de la siguiente manera:
