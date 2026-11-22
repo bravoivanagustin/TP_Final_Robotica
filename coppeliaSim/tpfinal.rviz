@@ -170,7 +170,29 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          {}
+          odom:
+            base_link:
+              front_laser:
+                {}
+            base_link_gt:
+              Rectangle0:
+                {}
+              intermediateLink_fl:
+                {}
+              intermediateLink_fr:
+                {}
+              intermediateLink_rl:
+                {}
+              intermediateLink_rr:
+                {}
+              wheel_respondable_fl:
+                {}
+              wheel_respondable_fr:
+                {}
+              wheel_respondable_rl:
+                {}
+              wheel_respondable_rr:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -333,7 +355,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 7.115866184234619
+      Distance: 8.596977233886719
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -348,10 +370,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7147961258888245
+      Pitch: 0.7347961068153381
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.2317845821380615
+      Yaw: 3.201784610748291
     Saved: ~
 Window Geometry:
   Displays:

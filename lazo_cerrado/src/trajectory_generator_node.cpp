@@ -12,7 +12,12 @@
 
 // Genera la trayectoria cuadrada de 2 m de lado con orientación "opuesta al
 // centro" (yaw = atan2(y, x) en cada waypoint) que pide la consigna del TP.
-// Recorre CCW partiendo de (+s, +s).
+// Recorre CCW partiendo de (-s, +s), que es la esquina donde la escena
+// `coppeliaSim/omni_ekf.ttt` spawnea el robot (yaw inicial ≈ 3π/4 = atan2(s,-s),
+// ya matcheado con la convención "opuesta al centro" de ese vértice). Así el
+// cursor monotónico del follower agarra el waypoint 0, recorre los 4 lados y
+// cierra sobre el mismo punto inicial — sin el saltito al waypoint más cercano
+// que se comía el primer lado cuando la lista arrancaba en (+s, +s).
 //
 // Pub:
 //   /robot/trajectory  (robmovil_msgs/Trajectory) — consumido por el follower.
@@ -23,14 +28,14 @@ static void build_square_trajectory(double s, double step,
                                     robmovil_msgs::msg::Trajectory& traj,
                                     nav_msgs::msg::Path& path)
 {
-  // Vértices CCW + cierre explícito en (+s, +s) para que el pursuit alcance fin
-  // de trayectoria con tolerancia.
+  // Vértices CCW + cierre explícito en (-s, +s) para que el pursuit alcance fin
+  // de trayectoria con tolerancia sobre el mismo punto donde arrancó.
   const std::array<std::pair<double, double>, 5> verts = {{
-      { s,  s},
       {-s,  s},
       {-s, -s},
       { s, -s},
       { s,  s},
+      {-s,  s},
   }};
 
   auto push_waypoint = [&](double x, double y, double yaw, double t_from_start) {
@@ -75,9 +80,9 @@ static void build_square_trajectory(double s, double step,
     }
   }
 
-  // Waypoint de cierre: vértice final (+s, +s) con yaw radial.
-  double yaw_end = std::atan2(s, s);  // = π/4
-  push_waypoint(s, s, yaw_end, t_acc);
+  // Waypoint de cierre: vuelta al vértice inicial (-s, +s) con yaw radial.
+  double yaw_end = std::atan2(s, -s);  // = 3π/4
+  push_waypoint(-s, s, yaw_end, t_acc);
 }
 
 int main(int argc, char** argv)
