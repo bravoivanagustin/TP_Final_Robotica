@@ -135,6 +135,20 @@ void LandmarkDetector::clusterAndPublish(
     for (const auto& p : c_pts) centroid += p;
     centroid /= static_cast<double>(c_pts.size());
 
+    // El laser solo ve la cara del poste que lo mira, con rayos equiespaciados en
+    // angulo (~uniformes en la coordenada lateral). El centroide de esos puntos queda
+    // a r*pi/4 del centro, del lado del laser: se lo corre esa distancia en la
+    // direccion laser -> poste. Sin esto el rango sale ~3.9 cm corto (medido).
+    const tf2::Vector3 laser_pos = laser_transform_.getOrigin();
+    const double dx = centroid.x() - laser_pos.x();
+    const double dy = centroid.y() - laser_pos.y();
+    const double dist = std::hypot(dx, dy);
+    if (dist > 1e-6) {
+      const double corr = 0.5 * landmark_diameter_ * M_PI / 4.0;
+      centroid.setX(centroid.x() + corr * dx / dist);
+      centroid.setY(centroid.y() + corr * dy / dist);
+    }
+
     robmovil_msgs::msg::Landmark lm;
     lm.range   = static_cast<float>(std::hypot(centroid.x(), centroid.y()));
     lm.bearing = static_cast<float>(std::atan2(centroid.y(), centroid.x()));

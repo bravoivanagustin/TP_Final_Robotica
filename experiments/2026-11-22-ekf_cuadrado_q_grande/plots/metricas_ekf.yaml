@@ -1,0 +1,21 @@
+ekf:
+  error_pos_medio_m: 0.012
+  error_pos_max_m: 0.0177
+  error_pos_final_m: 0.002
+  error_yaw_medio_deg: 0.2664
+  error_yaw_max_deg: 0.6325
+  error_yaw_final_deg: -0.0141
+odometria:
+  error_pos_medio_m: 0.4783
+  error_pos_max_m: 0.8719
+  error_pos_final_m: 0.8716
+  error_yaw_final_deg: -19.5789
+consistencia:
+  dentro_2sigma_x: 1.0
+  dentro_2sigma_y: 1.0
+  dentro_2sigma_theta: 1.0
+  nees_medio: 0.3875
+  nees_dentro_intervalo_95: 0.8108
+  sigma_xy_medio_m: 0.0273
+  sigma_theta_medio_deg: 0.7793
+ventana_analizada_s: 65.7

@@ -1,0 +1,64 @@
+# Manifiesto de una corrida experimental.
+# Módulo 3 — barrido de Q. Cuadrado del módulo 2 con el controlador sobre la
+# odometría (tune kp_xy 0.8 / kp_yaw 0.75) y el EKF corriendo en paralelo sin
+# intervenir: el recorrido es el mismo en las 3 corridas y sólo cambia Q.
+
+slug: ekf_cuadrado_q_chico
+fecha: 2026-11-22
+git_sha: 8d35751
+git_dirty: true
+descripcion: "Barrido de Q, EKF pasivo en el cuadrado: sigma_xy=0.0005 m, sigma_theta=0.0005 rad por paso (ajusta el error real a ~0.5 s)"
+
+# Backend: odometría + detector + EKF. R fijo, medido con scripts/estimar_ruido.py.
+launch:
+  paquete: robmovil_ekf
+  archivo: localizacion_ekf.launch.py
+  args:
+    sigma_x: 0.0005
+    sigma_y: 0.0005
+    sigma_theta: 0.0005
+    sigma_range: 0.01
+    sigma_bearing: 0.005
+
+esperar_play: true
+
+trayectoria:
+  tipo: cuadrado_2m
+  parametros:
+    lado: 2.0
+    kp_xy: 0.8
+    kp_yaw: 0.75
+    lookahead_distance: 0.30
+
+# Controlador sobre la odometría (base_link), igual que el módulo 2.
+cmd_source:
+  tipo: closed_loop_launch
+  paquete: lazo_cerrado
+  archivo: lazo_cerrado.launch.py
+  args:
+    use_sim_time: true
+    kp_xy: 0.8
+    kp_yaw: 0.75
+    lookahead_distance: 0.30
+    goal_mode: PURSUIT
+    base_frame: base_link
+    square_half_side: 2.0
+
+duracion_maxima_s: 330
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/odometry_ekf
+  - /landmarks
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /robot/trajectory
+  - /goal_pose
+  - /tf
+  - /tf_static
+
+notas_resumen: |

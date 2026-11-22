@@ -689,11 +689,30 @@ def wrap(a):
     return np.arctan2(np.sin(a), np.cos(a))
 
 
-def ekf_errors(ekf, gt_sim, odom_sim):
-    """Errores EKF−GT y odom−GT en los instantes del EKF (dentro del rango del GT)."""
+def ventana_movimiento(entries, umbral=0.01, margen=0.5):
+    """(t_ini, t_fin) en sim-time en que el robot se mueve según /robot/odometry.
+
+    Al terminar la trayectoria el robot queda quieto hasta que corta el watchdog: esas
+    muestras no aportan al análisis del filtro y diluyen las métricas (p.ej. el NEES
+    medio), así que se excluyen.
+    """
+    ts = np.array([m.header.stamp.sec + m.header.stamp.nanosec * 1e-9 for _, m in entries])
+    v = np.array([max(math.hypot(m.twist.twist.linear.x, m.twist.twist.linear.y),
+                      abs(m.twist.twist.angular.z)) for _, m in entries])
+    mov = np.where(v > umbral)[0]
+    if not len(mov):
+        return ts.min(), ts.max()
+    return ts[mov[0]] - margen, ts[mov[-1]] + margen
+
+
+def ekf_errors(ekf, gt_sim, odom_sim, ventana=None):
+    """Errores EKF−GT y odom−GT en los instantes del EKF (dentro del rango del GT
+    y, si se pasa, de la ventana (t_ini, t_fin))."""
     tg, xg, yg, thg = gt_sim
     t = ekf["t"]
     mask = (t >= tg.min()) & (t <= tg.max())
+    if ventana is not None:
+        mask &= (t >= ventana[0]) & (t <= ventana[1])
     t = t[mask]
     gx, gy, gth = interp_pose(t, tg, xg, yg, thg)
     e = {
@@ -948,12 +967,14 @@ def main():
             # Todo en sim-time (stamps de header) para comparar muestra a muestra.
             gt_sim = extract_gt_pose(tf_dyn, tf_sta, header_stamp=True)
             odom_sim = odom_sim_time(msgs["/robot/odometry"], map_odom)
-            e = ekf_errors(ekf, gt_sim, odom_sim)
+            ventana = ventana_movimiento(msgs["/robot/odometry"])
+            e = ekf_errors(ekf, gt_sim, odom_sim, ventana)
             plot_ekf_vs_odom(e, plots_dir / "ekf_vs_odom_error.png", slug)
             plot_ekf_error_2sigma(e, plots_dir / "ekf_error_2sigma.png", slug)
             plot_ekf_sigma(ekf, msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png", slug)
             plot_ekf_nees(e, plots_dir / "ekf_nees.png", slug)
             metricas = ekf_metrics(e)
+            metricas["ventana_analizada_s"] = round(float(e["t"][-1] - e["t"][0]), 1)
             with (plots_dir / "metricas_ekf.yaml").open("w") as f:
                 yaml.safe_dump(metricas, f, sort_keys=False, allow_unicode=True)
             print(yaml.safe_dump(metricas, sort_keys=False, allow_unicode=True))
