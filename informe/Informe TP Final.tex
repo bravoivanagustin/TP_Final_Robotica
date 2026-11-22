@@ -70,7 +70,7 @@ Los robots móviles omnidireccionales son aquellos que tienen la capacidad de de
 
 En este trabajo se propone lograr que un robot omnidireccional de cuatro ruedas Mecanum pueda seguir una trayectoria de referencia de manera precisa. Para ello, se implementan distintos contenidos desarrollados a lo largo de la cursada de la materia, utilizando el sistema ROS2 y el simulador CoppeliaSim.
 
-El trabajo consta de tres etapas que trabajan en conjunto. La primera consiste en el desarrollo del modelo cinemático del robot, que permite traducir los comandos de velocidad en velocidades de las ruedas Mecanum y, a su vez, estimar la posición del robot a partir de la odometría. En segundo lugar, se implementa un controlador que permite manejar los grados de libertad del robot de forma desacoplada, de manera que pueda realizar el seguimiento de la trayectoria de referencia mediante selección sucesiva de objetivos cercanos. Por último, se incorpora un Filtro de Kalman Extendido (EKF) que permite mejorar la estimación de la posición del robot, utilizando la odometría en conjunto con observaciones de postes del entorno detectados por un sensor láser. Esta estimación mejorada se utiliza como realimentación para el controlador, logrando un seguimiento más preciso de la trayectoria deseada.
+El trabajo consta de tres etapas que trabajan en conjunto. La primera consiste en el desarrollo del modelo cinemático del robot, que permite traducir los comandos de velocidad en velocidades de las ruedas Mecanum y, a su vez, estimar la posición del robot a partir de la odometría. En segundo lugar, se implementa un controlador que permite manejar los grados de libertad del robot de forma desacoplada, de manera que pueda realizar el seguimiento de la trayectoria de referencia mediante selección sucesiva de objetivos cercanos. Por último, se incorpora un Filtro de Kalman Extendido (EKF) que permite mejorar la estimación de la posición del robot, utilizando la odometría en conjunto con observaciones de postes del entorno detectados por un sensor láser. Esta estimación mejorada se utiliza como retroalimentación para el controlador, logrando un seguimiento más preciso de la trayectoria deseada.
 
 A lo largo del trabajo se presentan los modelos matemáticos utilizados, las decisiones tomadas durante la implementación y los experimentos realizados junto con sus resultados, a fin de evaluar el desempeño de las estimaciones frente a la pose real del robot.
 
@@ -555,7 +555,7 @@ Es decir, al comenzar se supone un desvío de $0.1$~m en cada coordenada y de $0
 
 \subsection{Nodo EKF y asociación de datos}
 
-El nodo \texttt{ekf\_localizer\_node} implementa el filtro. Trabaja con tres entradas y dos salidas.
+El nodo \texttt{ekf\_localizer} implementa el filtro. Trabaja con tres entradas y dos salidas.
 
 \paragraph{Entradas.}
 \begin{itemize}
@@ -611,12 +611,146 @@ Para $P^+$ se usa la forma de Joseph, que mantiene la matriz simétrica y defini
 
 % =====================================================================
 \section{Sistema desarrollado}
-\begin{tareas}
-    \item \TODO{Listar los paquetes ROS2 implementados: \texttt{modelo\_holonomico} (\texttt{mecanum\_odometry\_node}), \texttt{lazo\_cerrado} (\texttt{trajectory\_generator}, \texttt{trajectory\_follower}), \texttt{ekf\_localizer} (\texttt{landmark\_detector\_node}, \texttt{ekf\_localizer\_node}), \texttt{robmovil\_msgs}.}
-    \item \TODO{Diagrama general de tópicos/mensajes del sistema completo (extender el diagrama de la consigna con los nodos propios y sus tópicos: \texttt{/robot/odometry}, \texttt{/landmarks}, \texttt{/landmark\_markers}, \texttt{/robot/odometry\_ekf}, \texttt{/goal\_pose}, \texttt{/real\_path}).}
-    \item \TODO{Mencionar el URDF (\texttt{URDF/nashe.urdf}) usado para la visualización del robot en RViz2.}
-    \item \TODO{Instrucciones de ejecución: cómo levantar la simulación en CoppeliaSim, orden de lanzamiento de los launch files de cada módulo, cómo correr un experimento con \texttt{scripts/run\_experiment.sh} y generar los gráficos con \texttt{scripts/plot\_run.py}.}
-\end{tareas}
+\subsection{Paquetes y nodos}
+
+El sistema está compuesto por cuatro paquetes de ROS2. Tres de ellos contienen los nodos, y se corresponden con las tres etapas descriptas en la introducción. El cuarto, \texttt{robmovil\_msgs}, es el paquete de mensajes de la materia, que se utiliza para los encoders, la trayectoria y los landmarks. Los nodos se resumen en la Tabla~\ref{tab:nodos}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Paquete} & \textbf{Ejecutable} & \textbf{Función} \\
+\midrule
+\texttt{modelo\_holonomico} & \texttt{mecanum\_odometry\_node} & Cinemática inversa y odometría (Sección~2) \\
+\texttt{lazo\_cerrado} & \texttt{trajectory\_generator} & Generación de la trayectoria (Sección~3.2) \\
+ & \texttt{trajectory\_follower} & Controlador y \emph{pursuit} (Sección~3) \\
+\texttt{ekf\_localizer} & \texttt{landmark\_detector\_node} & Detección de postes (Sección~4.1) \\
+ & \texttt{ekf\_localizer} & Filtro EKF (Sección~4.4) \\
+\bottomrule
+\end{tabular}
+\caption{Nodos implementados.}
+\label{tab:nodos}
+\end{table}
+
+\subsection{Tópicos y transformaciones}
+
+En la Figura~\ref{fig:sistema} se muestra cómo se comunican los nodos entre sí y con el simulador cuando el robot sigue la trayectoria utilizando la estimación del EKF. El controlador no recibe la pose por un tópico, sino que la obtiene de una transformación. De esta forma, para pasar de utilizar la odometría a utilizar el EKF alcanza con cambiar el parámetro \texttt{base\_frame} de \texttt{base\_link} a \texttt{base\_link\_ekf}.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=0.85, transform shape, >=Stealth,
+  blk/.style={draw, rectangle, minimum width=3.2cm, minimum height=1cm, align=center, font=\ttfamily\small},
+  lab/.style={font=\ttfamily\scriptsize, align=center}]
+  \node[blk, minimum height=5.2cm, minimum width=2.2cm, font=\small] (sim) at (0,0) {Simulador};
+  \node[blk] (odo) at (6.7,2) {mecanum\_odometry};
+  \node[blk] (det) at (6.7,-2) {landmark\_detector};
+  \node[blk] (fol) at (13.3,2) {trajectory\_follower};
+  \node[blk] (gen) at (13.3,4.2) {trajectory\_generator};
+  \node[blk] (ekf) at (13.3,-2) {ekf\_localizer};
+  \draw[->] ($(odo.west)+(0,0.25)$) -- node[lab, above] {/robot/*\_wheel/cmd\_vel} ($(sim.east)+(0,2.25)$);
+  \draw[->] ($(sim.east)+(0,1.75)$) -- node[lab, below] {/robot/encoders} ($(odo.west)+(0,-0.25)$);
+  \draw[->] ($(sim.east)+(0,-2)$) -- node[lab, above] {/robot/front\_laser/scan} (det.west);
+  \draw[->] (det.east) -- node[lab, above] {/landmarks} (ekf.west);
+  \draw[->] (odo.south east) -- node[lab, right, pos=0.35, xshift=3pt] {/robot/odometry} (ekf.north west);
+  \draw[->] (fol.west) -- node[lab, above] {/robot/cmd\_vel} (odo.east);
+  \draw[->] (gen.south) -- node[lab, right] {/robot/trajectory} (fol.north);
+  \draw[->, dashed] (ekf.north) -- node[lab, right] {map $\rightarrow$\\base\_link\_ekf} (fol.south);
+  \draw[->] (sim.south) |- ++(1,-0.8) -| node[lab, above, pos=0.25] {/posts} (ekf.south);
+\end{tikzpicture}
+\caption{Nodos del sistema y tópicos que los conectan. La línea punteada indica una transformación.}
+\label{fig:sistema}
+\end{figure}
+
+Los tipos de mensaje de cada tópico se detallan en la Tabla~\ref{tab:topicos}. Además de los que aparecen en la figura, algunos nodos publican tópicos que sirven para visualizar el funcionamiento del sistema en RViz2 o para registrar los experimentos, pero que ningún otro nodo necesita.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Tópico} & \textbf{Mensaje} & \textbf{Publica} \\
+\midrule
+\texttt{/robot/encoders} & \texttt{robmovil\_msgs/MultiEncoderTicks} & Simulador \\
+\texttt{/robot/front\_laser/scan} & \texttt{sensor\_msgs/LaserScan} & Simulador \\
+\texttt{/posts} & \texttt{geometry\_msgs/PoseArray} & Simulador \\
+\texttt{/robot/*\_wheel/cmd\_vel} & \texttt{std\_msgs/Float64} & \texttt{mecanum\_odometry} \\
+\texttt{/robot/odometry} & \texttt{nav\_msgs/Odometry} & \texttt{mecanum\_odometry} \\
+\texttt{/robot/trajectory} & \texttt{robmovil\_msgs/Trajectory} & \texttt{trajectory\_generator} \\
+\texttt{/robot/cmd\_vel} & \texttt{geometry\_msgs/Twist} & \texttt{trajectory\_follower} \\
+\texttt{/landmarks} & \texttt{robmovil\_msgs/LandmarkArray} & \texttt{landmark\_detector} \\
+\midrule
+\texttt{/desired\_path} & \texttt{nav\_msgs/Path} & \texttt{trajectory\_generator} \\
+\texttt{/goal\_pose} & \texttt{geometry\_msgs/PoseStamped} & \texttt{trajectory\_follower} \\
+\texttt{/real\_path} & \texttt{nav\_msgs/Path} & \texttt{trajectory\_follower} \\
+\texttt{/robot/odometry\_ekf} & \texttt{nav\_msgs/Odometry} & \texttt{ekf\_localizer} \\
+\texttt{/landmark\_markers} & \texttt{visualization\_msgs/MarkerArray} & \texttt{landmark\_detector} \\
+\bottomrule
+\end{tabular}
+\caption{Tópicos del sistema. Los últimos cinco se utilizan para visualización y registro.}
+\label{tab:topicos}
+\end{table}
+
+Por otro lado, las poses se comparten a través de las transformaciones de la Tabla~\ref{tab:tf}. La pose real \texttt{base\_link\_gt} solo se utiliza para evaluar los resultados, y ningún nodo la usa como entrada.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Transformación} & \textbf{Publica} & \textbf{Contenido} \\
+\midrule
+\texttt{map} $\rightarrow$ \texttt{odom} & Simulador & Pose inicial del robot en el mapa \\
+\texttt{odom} $\rightarrow$ \texttt{base\_link\_gt} & Simulador & Pose real \\
+\texttt{base\_link} $\rightarrow$ \texttt{front\_laser} & Simulador & Posición del láser en el robot \\
+\texttt{odom} $\rightarrow$ \texttt{base\_link} & \texttt{mecanum\_odometry} & Pose estimada por odometría \\
+\texttt{map} $\rightarrow$ \texttt{base\_link\_ekf} & \texttt{ekf\_localizer} & Pose estimada por el EKF \\
+\bottomrule
+\end{tabular}
+\caption{Transformaciones del sistema.}
+\label{tab:tf}
+\end{table}
+
+\subsection{Instrucciones de ejecución}
+
+El sistema se ejecuta dentro del contenedor de Docker de la materia, que incluye ROS2 Humble y CoppeliaSim. La ruta del repositorio en la computadora está escrita en el archivo \texttt{start-docker.sh} de la carpeta \texttt{ros\_docker}, por lo que se la debe modificar según dónde se lo haya clonado. Desde esa carpeta se crea la imagen, se inicia el contenedor y se abre una terminal dentro de él.
+
+\begin{verbatim}
+bash start-docker.sh build
+bash start-docker.sh start
+bash start-docker.sh open
+\end{verbatim}
+
+Para que el simulador publique los encoders y los postes, los mensajes \texttt{MultiEncoderTicks} y \texttt{PoseArray} deben estar declarados en el paquete \texttt{sim\_ros2\_interface}, como se indica en el anexo de la consigna. Luego se compila el workspace.
+
+\begin{verbatim}
+cd /root/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+\end{verbatim}
+
+Con el workspace compilado, se abre CoppeliaSim con el comando \texttt{coppeliaSim.sh}, se carga la escena \texttt{coppeliaSim/omni\_ekf\_v2.ttt} y se inicia la simulación. En otra terminal del contenedor se ejecuta el sistema completo, que sigue la trayectoria utilizando la estimación del EKF.
+
+\begin{verbatim}
+ros2 launch ekf_localizer seguimiento_ekf.launch.py
+\end{verbatim}
+
+Para seguir la trayectoria utilizando solo la odometría, se ejecuta el siguiente comando, en el que se pueden elegir las constantes del controlador.
+
+\begin{verbatim}
+ros2 launch lazo_cerrado seguimiento_odom.launch.py kp_xy:=0.8 kp_yaw:=3.0
+\end{verbatim}
+
+Por último, para mover el robot con velocidades constantes, sin el controlador, se ejecutan la odometría y el EKF, y se publica la velocidad deseada, cada comando en una terminal distinta.
+
+\begin{verbatim}
+ros2 launch modelo_holonomico odometry.launch.py
+ros2 launch ekf_localizer ekf_localizer.launch.py
+ros2 topic pub -r 10 /robot/cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.1, y: 0.0}, angular: {z: 0.1}}"
+\end{verbatim}
+
+En todos los casos, el sistema se puede visualizar en RViz2 con la configuración \texttt{tpfinal.rviz} de la carpeta \texttt{coppeliaSim}, que utiliza el modelo del robot \texttt{URDF/holonomico.urdf}.
 
 % =====================================================================
 \section{Conclusiones}
