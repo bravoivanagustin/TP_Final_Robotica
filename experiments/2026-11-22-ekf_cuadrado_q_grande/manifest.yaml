@@ -1,15 +1,15 @@
 # Manifiesto de una corrida experimental.
-# Módulo 3 — barrido de Q. Cuadrado del módulo 2 con el controlador sobre la
-# odometría (tune kp_xy 0.8 / kp_yaw 0.75) y el EKF corriendo en paralelo sin
-# intervenir: el recorrido es el mismo en las 3 corridas y sólo cambia Q.
+# Módulo 3 — cuadrado del módulo 2 con el controlador sobre la odometría
+# (tune kp_xy 0.8 / kp_yaw 0.75) y el EKF corriendo en paralelo sin intervenir,
+# con los Q y R elegidos (defaults de localizer.launch.py).
 
 slug: ekf_cuadrado_q_grande
 fecha: 2026-11-22
 git_sha: 8d35751
 git_dirty: true
-descripcion: "Barrido de Q, EKF pasivo en el cuadrado: sigma_xy=0.02 m, sigma_theta=0.01 rad por paso (~6x pesimista, control)"
+descripcion: "EKF pasivo en el cuadrado con Q (0.02 m, 0.01 rad por paso) y R (0.01 m, 0.005 rad) elegidos"
 
-# Backend: odometría + detector + EKF. R fijo, medido con scripts/estimar_ruido.py.
+# Backend: odometría + detector + EKF.
 launch:
   paquete: robmovil_ekf
   archivo: localizacion_ekf.launch.py
@@ -62,3 +62,4 @@ topics_grabados:
   - /tf_static
 
 notas_resumen: |
+  EKF: error medio 1.2 cm (máx 1.8 cm), yaw 0.27°. Odometría: 0.87 m y −19.6° al final.

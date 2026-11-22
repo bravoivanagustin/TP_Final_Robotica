@@ -13,11 +13,17 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('only_prediction', default_value='false'),
-        DeclareLaunchArgument('sigma_x', default_value='0.15'),
-        DeclareLaunchArgument('sigma_y', default_value='0.15'),
-        DeclareLaunchArgument('sigma_theta', default_value='0.15'),
-        DeclareLaunchArgument('sigma_range', default_value='0.05'),
-        DeclareLaunchArgument('sigma_bearing', default_value='0.03'),
+        # Q (odometria, por paso) mayor que R (laser): el filtro confia mas en el sensado
+        DeclareLaunchArgument('sigma_x', default_value='0.02',
+                              description='Desvio del ruido de proceso en x [m], por paso'),
+        DeclareLaunchArgument('sigma_y', default_value='0.02',
+                              description='Desvio del ruido de proceso en y [m], por paso'),
+        DeclareLaunchArgument('sigma_theta', default_value='0.01',
+                              description='Desvio del ruido de proceso en theta [rad], por paso'),
+        DeclareLaunchArgument('sigma_range', default_value='0.01',
+                              description='Desvio del rango medido a un poste [m]'),
+        DeclareLaunchArgument('sigma_bearing', default_value='0.005',
+                              description='Desvio del bearing medido a un poste [rad]'),
 
         # Landmark detector (publica /landmarks en el frame base_link)
         Node(

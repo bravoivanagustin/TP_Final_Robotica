@@ -15,11 +15,11 @@ robmovil_ekf::Localizer::Localizer() :
   this->declare_parameter("min_landmark_size", 1);
   this->declare_parameter("min_range", 0.2);
   this->declare_parameter("init_cov", 0.01);
-  this->declare_parameter("sigma_x", 0.15);
-  this->declare_parameter("sigma_y", 0.15);
-  this->declare_parameter("sigma_theta", 0.15);
-  this->declare_parameter("sigma_range", 0.05);
-  this->declare_parameter("sigma_bearing", 0.03);
+  this->declare_parameter("sigma_x", 0.02);
+  this->declare_parameter("sigma_y", 0.02);
+  this->declare_parameter("sigma_theta", 0.01);
+  this->declare_parameter("sigma_range", 0.01);
+  this->declare_parameter("sigma_bearing", 0.005);
   this->declare_parameter("association_radius", 0.6);
 
   double sigma_x, sigma_y, sigma_theta, sigma_range, sigma_bearing, association_radius;

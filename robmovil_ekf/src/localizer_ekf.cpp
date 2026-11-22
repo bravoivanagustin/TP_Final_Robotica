@@ -8,9 +8,10 @@ robmovil_ekf::LocalizerEKF::LocalizerEKF(void) : EKFilter(3, 3, 3, 2, 2)
 {
   delta_t = 0;
   association_radius = 0.6;
-  sigma_x = sigma_y = sigma_theta = 0.15;
-  sigma_range = 0.05;
-  sigma_bearing = 0.03;
+  sigma_x = sigma_y = 0.02;
+  sigma_theta = 0.01;
+  sigma_range = 0.01;
+  sigma_bearing = 0.005;
 
   reset(0, 0, 0, 0.01);
 }

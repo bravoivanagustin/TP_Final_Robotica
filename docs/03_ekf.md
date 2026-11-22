@@ -68,21 +68,27 @@ V = I₂. La innovación del bearing se normaliza a (−π, π] en `makeDZ`.
 
 | Parámetro | Valor | Significado |
 |---|---|---|
-| `sigma_x`, `sigma_y` | 0,15 m | desvío de proceso **por paso de predicción** |
-| `sigma_theta` | 0,15 rad | ídem en orientación |
-| `sigma_range` | 0,05 m | desvío del rango medido |
-| `sigma_bearing` | 0,03 rad | desvío del bearing medido |
+| `sigma_x`, `sigma_y` | 0,02 m | desvío de proceso **por paso de predicción** (Δt = 50 ms) |
+| `sigma_theta` | 0,01 rad | ídem en orientación |
+| `sigma_range` | 0,01 m | desvío del rango medido |
+| `sigma_bearing` | 0,005 rad | desvío del bearing medido |
 | `init_cov` | 0,01 | P₀ = init_cov · I |
 
-Q ≫ R refleja lo que pide la consigna: el filtro confía más en el láser que en la odometría.
-**Ojo:** Q es constante por paso, no por segundo; con odometría a ~25 Hz la incertidumbre crece rápido entre correcciones y también con el robot quieto. Candidato a mejora: escalar Q con Δt sobreescribiendo `makeQ()`.
+Criterio (consigna, ítem 3): Q mayor que R, para que el filtro confíe más en el láser que en la odometría.
+- R chico: el láser del simulador mide con precisión de milímetros; se le da 1 cm de margen.
+- Q mayor: la odometría acumula error por el deslizamiento de las ruedas Mecanum (~0,9 m en una vuelta del cuadrado, módulo 2).
+- Referencia: en el taller 10 Q y R eran parecidos (~3 cm). Acá R baja porque el láser simulado es más preciso.
+
+Con estos valores, en el cuadrado con el EKF pasivo (`experiments/2026-11-22-ekf_cuadrado_q_grande`): error medio del EKF 1,2 cm contra 87 cm de la odometría.
+
+Q es constante por paso. La odometría sale con paso fijo de 50 ms, así que equivale a una incertidumbre que crece con el tiempo (también con el robot quieto, si no ve postes).
 
 `makeBaseQ`/`makeBaseR` los evalúa la librería recién en el primer paso del filtro, por eso los σ se cargan en el constructor del nodo, antes de cualquier predicción.
 
 ## Detector de postes
 
 Puntos válidos del scan → cartesiano en `base_link` (vía TF `base_link → front_laser`) → clusters por distancia entre puntos consecutivos (`cluster_distance_threshold` 0,15 m, entre 2 y 30 puntos) → centroide → (r, φ). Publica también `/landmark_markers` para RViz.
-El centroide de los puntos visibles queda algo más cerca del robot que el centro real del poste (radio 5 cm): es un sesgo sistemático chico.
+El láser sólo ve la cara del poste que lo mira, así que el centroide de los puntos queda más cerca que el centro real: a r·π/4 ≈ 3,9 cm (r = 5 cm), porque los rayos caen uniformes en la coordenada lateral y el promedio de la profundidad de un semicírculo es (π r²/2)/(2r). El detector corre el centroide esa distancia en la dirección láser → poste. Medido contra el GT: sesgo de rango −3,9 cm sin corrección, ≈ 0 con corrección.
 
 ## Integración con el simulador (dos detalles que rompen todo si se ignoran)
 
@@ -115,5 +121,4 @@ El robot real cerró a ~4 cm de `(-2, 2)`. El error del EKF es casi constante (~
 
 ## Pendiente
 
-- Experimentos para el informe con el framework (`experiments/`), grabando `/robot/odometry_ekf`: (a) solo localización con velocidad constante, EKF vs odometría vs GT; (b) cuadrado con EKF en el lazo; (c) capturas de RViz con la elipse de covarianza.
-- Ajuste de Q (por Δt) y eventual compensación del radio del poste en el detector.
+- Experimentos para el informe con el framework (`experiments/`, `esperar_play: true`), con los Q y R elegidos: (a) solo localización con velocidad constante (círculo), EKF vs odometría vs GT; (b) cuadrado con EKF en el lazo; (c) capturas de RViz con la elipse de covarianza.
