@@ -1,0 +1,57 @@
+# Manifiesto de una corrida experimental.
+# Barrido módulo 2 — kp_xy=1.6 en escena v2 (sin pre-align).
+
+slug: cuadrado_v2_kpxy16
+fecha: 2026-11-21
+git_sha: 6f866f4
+git_dirty: true
+descripcion: |
+  Módulo 2 — kp_xy=1.6 (doble del default) en escena v2. Velocidades
+  traslacionales mayores → más slip lateral. Punto alto del barrido de
+  ganancia traslacional.
+
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+trayectoria:
+  tipo: cuadrado_2m
+  parametros:
+    lado: 2.0
+    kp_xy: 1.6
+    kp_yaw: 1.5
+    lookahead_distance: 0.30
+
+cmd_source:
+  tipo: closed_loop_launch
+  paquete: lazo_cerrado
+  archivo: lazo_cerrado.launch.py
+  args:
+    use_sim_time: true
+    kp_xy: 1.6
+    kp_yaw: 1.5
+    lookahead_distance: 0.30
+    goal_mode: PURSUIT
+    base_frame: base_link
+    square_half_side: 2.0
+
+# Doble de ganancia traslacional → ~90 s + overhead.
+duracion_maxima_s: 180
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /robot/trajectory
+  - /goal_pose
+  - /real_path
+  - /tf
+  - /tf_static
+
+notas_resumen: |

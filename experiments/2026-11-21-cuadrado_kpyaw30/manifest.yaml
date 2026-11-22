@@ -1,0 +1,61 @@
+# Manifiesto de una corrida experimental.
+# Barrido módulo 2 — kp_yaw=3.0 (doble del baseline).
+
+slug: cuadrado_kpyaw30
+fecha: 2026-11-21
+git_sha: 6f866f4
+git_dirty: true
+descripcion: |
+  Módulo 2 — barrido de kp_yaw. Con kp_yaw=3.0 (2× el baseline) el controller
+  demanda rotación más agresiva para igualar yaw_err. Hipótesis: alcanzar el
+  yaw objetivo más rápido → menos tiempo en el régimen "rota-mientras-
+  traslada" → menos slip rotacional acumulado (que era el drift residual que
+  no se iba bajando velocidad en el barrido de lookahead).
+  Riesgo: wz más alto → saturación/slip Mecanum puro rotacional en las esquinas.
+
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+trayectoria:
+  tipo: cuadrado_2m
+  parametros:
+    lado: 2.0
+    kp_xy: 0.8
+    kp_yaw: 3.0
+    lookahead_distance: 0.30
+
+cmd_source:
+  tipo: closed_loop_launch
+  paquete: lazo_cerrado
+  archivo: lazo_cerrado.launch.py
+  args:
+    use_sim_time: true
+    kp_xy: 0.8
+    kp_yaw: 3.0
+    lookahead_distance: 0.30
+    goal_mode: PURSUIT
+    base_frame: base_link
+    square_half_side: 2.0
+
+# Velocidad traslacional similar al baseline (kp_xy sin cambio) → ~175 s de
+# pursuit + overhead + pre-alineación casi instantánea (kp_yaw alto). 240 s.
+duracion_maxima_s: 240
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /robot/trajectory
+  - /goal_pose
+  - /real_path
+  - /tf
+  - /tf_static
+
+notas_resumen: |

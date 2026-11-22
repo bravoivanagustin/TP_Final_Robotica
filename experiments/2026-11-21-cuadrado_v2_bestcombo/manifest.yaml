@@ -1,0 +1,58 @@
+# Manifiesto de una corrida experimental.
+# Barrido módulo 2 — bestcombo en escena v2 (sin pre-align).
+
+slug: cuadrado_v2_bestcombo
+fecha: 2026-11-21
+git_sha: 6f866f4
+git_dirty: true
+descripcion: |
+  Módulo 2 — cierre del barrido v2. Combina las dos palancas mejores de v1:
+  lookahead=0.15 (velocidad traslacional baja) + kp_yaw=3.0 (rotación rápida).
+  En v1 no stackearon aditivamente (0.91 m vs 0.87 m del kpyaw30 solo).
+  Ver si en v2 el patrón se repite o cambia.
+
+launch:
+  paquete: modelo_holonomico
+  archivo: odometry.launch.py
+  args:
+    use_sim_time: true
+
+trayectoria:
+  tipo: cuadrado_2m
+  parametros:
+    lado: 2.0
+    kp_xy: 0.8
+    kp_yaw: 3.0
+    lookahead_distance: 0.15
+
+cmd_source:
+  tipo: closed_loop_launch
+  paquete: lazo_cerrado
+  archivo: lazo_cerrado.launch.py
+  args:
+    use_sim_time: true
+    kp_xy: 0.8
+    kp_yaw: 3.0
+    lookahead_distance: 0.15
+    goal_mode: PURSUIT
+    base_frame: base_link
+    square_half_side: 2.0
+
+# Lookahead chico → ~325 s como lookahead015. 390 s de watchdog.
+duracion_maxima_s: 390
+
+topics_grabados:
+  - /robot/odometry
+  - /robot/cmd_vel
+  - /robot/encoders
+  - /robot/front_left_wheel/cmd_vel
+  - /robot/front_right_wheel/cmd_vel
+  - /robot/rear_left_wheel/cmd_vel
+  - /robot/rear_right_wheel/cmd_vel
+  - /robot/trajectory
+  - /goal_pose
+  - /real_path
+  - /tf
+  - /tf_static
+
+notas_resumen: |
