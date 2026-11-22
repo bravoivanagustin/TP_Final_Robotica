@@ -10,14 +10,25 @@
 #include <cmath>
 #include <string>
 
-// Genera la trayectoria cuadrada de 2 m de lado con orientación "opuesta al
-// centro" (yaw = atan2(y, x) en cada waypoint) que pide la consigna del TP.
-// Recorre CCW partiendo de (-s, +s), que es la esquina donde la escena
-// `coppeliaSim/omni_ekf.ttt` spawnea el robot (yaw inicial ≈ 3π/4 = atan2(s,-s),
-// ya matcheado con la convención "opuesta al centro" de ese vértice). Así el
-// cursor monotónico del follower agarra el waypoint 0, recorre los 4 lados y
-// cierra sobre el mismo punto inicial — sin el saltito al waypoint más cercano
-// que se comía el primer lado cuando la lista arrancaba en (+s, +s).
+// Genera la trayectoria cuadrada de 2 m de lado con orientación según la
+// figura de la consigna (página 6): yaws cardinales en los vértices rotando
+// 90° CCW por lado.
+//   Vértice (-s, +s): yaw =  90° (↑ norte)
+//   Vértice (-s, -s): yaw = 180° (← oeste)
+//   Vértice (+s, -s): yaw = 270° (↓ sur)
+//   Vértice (+s, +s): yaw = 360° (→ este)
+//   Cierre (-s, +s): yaw = 450° (= 90° + una vuelta)
+// Entre vértices se interpola linealmente usando yaws SIN envolver (para que
+// la interpolación sea monotónicamente CCW). El quaternion resultante los
+// envuelve automáticamente al rango canónico; el controller usa
+// angles::normalize_angle sobre el error, así que la cadena completa maneja
+// el wrap limpio.
+//
+// Esta es una convención distinta a atan2(y, x) (que daría 135° en el primer
+// vértice en vez de 90°); matchea la figura del TP y coincide con el spawn
+// del simulador (yaw = π/2), eliminando el error inicial de alineación.
+//
+// Recorre CCW partiendo de (-s, +s), que es donde spawnea el robot.
 //
 // Pub:
 //   /robot/trajectory  (robmovil_msgs/Trajectory) — consumido por el follower.
@@ -28,14 +39,14 @@ static void build_square_trajectory(double s, double step,
                                     robmovil_msgs::msg::Trajectory& traj,
                                     nav_msgs::msg::Path& path)
 {
-  // Vértices CCW + cierre explícito en (-s, +s) para que el pursuit alcance fin
-  // de trayectoria con tolerancia sobre el mismo punto donde arrancó.
-  const std::array<std::pair<double, double>, 5> verts = {{
-      {-s,  s},
-      {-s, -s},
-      { s, -s},
-      { s,  s},
-      {-s,  s},
+  // (x, y, yaw_unwrapped) por vértice. CCW desde (-s, +s), cierre explícito.
+  struct Vertex { double x, y, yaw; };
+  const std::array<Vertex, 5> verts = {{
+      {-s,  s, 0.5 * M_PI},  //  90°
+      {-s, -s, 1.0 * M_PI},  // 180°
+      { s, -s, 1.5 * M_PI},  // 270°
+      { s,  s, 2.0 * M_PI},  // 360°
+      {-s,  s, 2.5 * M_PI},  // 450° (90° + 1 vuelta)
   }};
 
   auto push_waypoint = [&](double x, double y, double yaw, double t_from_start) {
@@ -65,24 +76,23 @@ static void build_square_trajectory(double s, double step,
   double t_acc = 0.0;
 
   for (size_t i = 0; i + 1 < verts.size(); ++i) {
-    double ax = verts[i].first,  ay = verts[i].second;
-    double bx = verts[i + 1].first, by = verts[i + 1].second;
+    double ax = verts[i].x,      ay = verts[i].y,      a_yaw = verts[i].yaw;
+    double bx = verts[i + 1].x,  by = verts[i + 1].y,  b_yaw = verts[i + 1].yaw;
     double seg_len = std::hypot(bx - ax, by - ay);
     int n_steps = std::max(1, (int)std::ceil(seg_len / step));
 
     for (int k = 0; k < n_steps; ++k) {
       double u = double(k) / double(n_steps);
-      double x = ax + u * (bx - ax);
-      double y = ay + u * (by - ay);
-      double yaw = std::atan2(y, x);
+      double x   = ax    + u * (bx - ax);
+      double y   = ay    + u * (by - ay);
+      double yaw = a_yaw + u * (b_yaw - a_yaw);
       push_waypoint(x, y, yaw, t_acc);
       t_acc += dt_dummy;
     }
   }
 
-  // Waypoint de cierre: vuelta al vértice inicial (-s, +s) con yaw radial.
-  double yaw_end = std::atan2(s, -s);  // = 3π/4
-  push_waypoint(-s, s, yaw_end, t_acc);
+  // Waypoint de cierre sobre el vértice inicial con yaw = 90° + una vuelta.
+  push_waypoint(verts.back().x, verts.back().y, verts.back().yaw, t_acc);
 }
 
 int main(int argc, char** argv)

@@ -26,8 +26,9 @@ The TP demands **three ROS 2 nodes** in addition to the message package and URDF
    - Pending refactor (noted in `mecanum_odometry.cpp:12-13`): lift `WHEEL_L`, `WHEEL_RADIUS`, `ENCODER_TICKS` from `#define`s to `ros2 param` so they can be tuned without recompiling.
 2. **Control a lazo cerrado y seguimiento de trayectoria** (`lazo_cerrado/`, **implemented**)
    - Clase base `robmovil::HolonomicTrajectoryFollower` (`src/HolonomicTrajectoryFollower.{h,cpp}`): timer de control a 30 Hz, publica `/robot/cmd_vel`, suscribe `/robot/trajectory`.
-   - Derivada `robmovil::KinematicHolonomicController` (`src/KinematicHolonomicController.{h,cpp}`): ley P por GDL en frame body, feedback por TF `map → base_link`. Modos: `FIXED` (goal único, para sanity) y `PURSUIT` (cursor monotónico sobre waypoints con lookahead). **Incluye fase de pre-alineación**: antes del pursuit, rota en el lugar hasta igualar el yaw del primer goal (elimina el pico inicial de `wz` que causa slip Mecanum).
-   - Nodo `trajectory_generator` (`src/trajectory_generator_node.cpp`): publica una `robmovil_msgs/Trajectory` del cuadrado `(±square_half_side, ±square_half_side)` CCW, con yaw por waypoint = `atan2(y, x)` ("opuesta al centro").
+   - Derivada `robmovil::KinematicHolonomicController` (`src/KinematicHolonomicController.{h,cpp}`): ley P por GDL en frame body, feedback por TF `map → base_link`. Modos: `FIXED` (goal único, para sanity) y `PURSUIT` (cursor monotónico sobre waypoints con lookahead). Sin pre-alineación (se probó y se sacó: no aportaba con la convención de yaw actual).
+   - Nodo `trajectory_generator` (`src/trajectory_generator_node.cpp`): publica una `robmovil_msgs/Trajectory` del cuadrado `(±square_half_side, ±square_half_side)` CCW desde `(-s, +s)` (donde spawnea el robot). Yaw "cardinal", fiel a la figura de la consigna (p. 6): 90° / 180° / 270° / 360° en los vértices `(-s,+s)`, `(-s,-s)`, `(+s,-s)`, `(+s,+s)`, interpolado linealmente en cada lado. **No** usa `atan2(y, x)`: esa variante (offset de +45°) se probó y daba ~20% más drift.
+   - Tune elegido del barrido cardinal: `lookahead_distance=0.15` (con `kp_xy=0.8`, `kp_yaw` 1.5 o 0.75). Ver `docs/02b_experimentos_informe_draft.md`.
    - Launchers: `launch/lazo_cerrado.launch.py` (controller + generator) y `launch/seguimiento_odom.launch.py` (combo con odometría del módulo 1 en un solo proceso).
    - Deep dive: `docs/02_lazo_cerrado.md`.
 3. **Localización basada en EKF** (`ekf_localizer/`, **implemented**)
@@ -178,7 +179,7 @@ robmovil_ekf::LocalizerEKF::LocalizerEKF(void) : EKFilter(3, 3, 3, 2, 2)
   - Launcher combo `seguimiento_ekf.launch.py`: odometría + detector + EKF + controller con `base_frame:=base_link_ekf`.
   - Deep dives: `docs/00_decisiones_modulo3.md`, `docs/03*_ekf_*.md`, `docs/modulo3_etapa_*.md`.
 - **`URDF/`** — `nashe.urdf` plus Collada meshes for body, Hokuyo URG-04LX laser, and the four Swedish wheels.
-- **`coppeliaSim/`** — `omni_ekf.ttt` (scene), `omni_ekf_v2.ttt` (alternativa sin decidir), `tpfinal.rviz` (RViz config). Binary, not built.
+- **`coppeliaSim/`** — `omni_ekf.ttt` (única escena; es la que antes se llamaba `omni_ekf_v2.ttt`, spawn en `(-2, +2)` con yaw π/2), `tpfinal.rviz` (RViz config). Binary, not built.
 - **`informe/`** — informe final en TeX (`Informe TP Final.tex` + `UBA.png` para la carátula).
 - **`ros_docker/`** — Dockerfile and host-side launch scripts.
 - **`herramientas_robotica/`** — supporting course docs (Docker walkthrough, etc.).

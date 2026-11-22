@@ -7,7 +7,7 @@ Este documento describe el segundo módulo del TP — el nodo de **control a laz
 La consigna §2 pide:
 
 - Un **controlador proporcional (P) por cada GDL** que haga converger la pose del robot hacia una pose objetivo, usando la odometría (vía TF) como feedback.
-- Seguir una **trayectoria cuadrada de 2 m de lado**, vértices `(±2, ±2)` en frame `map`, con orientación **opuesta al centro** (yaw deseado en cada punto = `atan2(y, x)`).
+- Seguir una **trayectoria cuadrada de 2 m de lado**, vértices `(±2, ±2)` en frame `map`, con orientación **opuesta al centro**. Interpretamos esto según la figura de la consigna (p. 6): yaws cardinales en los vértices (90°, 180°, 270°, 360°) que rotan 90° por lado. Ver §"`trajectory_generator_node`".
 - **Pursuit-based goal selection**: definir waypoints intermedios, redefinir el objetivo según cercanía.
 - Publicar `/robot/cmd_vel` (`geometry_msgs/Twist`) periódicamente.
 - Justificar experimentalmente los valores de Kp.
@@ -79,9 +79,10 @@ No hay saturación de velocidades — la consigna no la pide, y los controladore
 
 Standalone (no hereda). Construye la trayectoria cuadrada en el `main()`:
 
-- Vértices CCW: `(+s, +s) → (-s, +s) → (-s, -s) → (+s, -s) → (+s, +s)` con `s = square_half_side` (default 2.0).
+- Vértices CCW: `(-s, +s) → (-s, -s) → (+s, -s) → (+s, +s) → (-s, +s)` con `s = square_half_side` (default 2.0). Arranca en `(-s, +s)` porque ahí spawnea el robot: el cursor del pursuit toma el waypoint más cercano como primer goal, y si la lista arrancara en otro vértice se salteaba el primer lado.
 - Discretización: `n_steps = ceil(seg_len / waypoint_step)` por lado (default `waypoint_step = 0.05` → 80 wp por lado → 321 totales con cierre).
-- Yaw de cada wp: `atan2(y, x)` — orientación radial saliente, **continua a lo largo de cada lado** (la discontinuidad de `atan2` en `±π` no se cruza dentro de un lado porque ningún lado pasa por el origen).
+- Yaw de cada wp ("cardinal", fiel a la figura de la consigna p. 6): 90° en `(-s,+s)`, 180° en `(-s,-s)`, 270° en `(+s,-s)`, 360° en `(+s,+s)` y 450° en el cierre, interpolado linealmente dentro de cada lado. Se interpola con ángulos sin envolver para que la rotación sea siempre CCW; el quaternion los envuelve solo y el controller calcula el error con `angles::normalize_angle`. El primer waypoint (90°) coincide con el yaw de spawn, así que no hay error angular al arrancar.
+- Alternativa descartada: `yaw = atan2(y, x)` (radial puro, +45° respecto de la cardinal en todo punto). Arranca con 45° de error y en el barrido dio ~20% más drift a velocidades normales.
 - Publica una vez en `/robot/trajectory` (`robmovil_msgs/Trajectory`) y `/desired_path` (`nav_msgs/Path`) con QoS Reliable + TransientLocal.
 
 El campo `velocity` de cada `TrajectoryPoint` queda en cero (no se usa en pursuit). `time_from_start` se llena con un `dt_dummy` monótono (no se usa, pero el campo es requerido por el `.msg`).
@@ -374,7 +375,7 @@ angular: x: 0.0     y: 0.0      z: 0.3–1.0
 
 **Objetivo**: combinar traslación + rotación con una distancia significativa. Ensayo general antes del PURSUIT.
 
-El robot está en `(-2, +2)`. El siguiente vértice del cuadrado CCW es `(-2, -2)`. Orientación radial en `(-2, -2)`: `atan2(-2, -2) ≈ -3π/4 ≈ -2.356`.
+El robot está en `(-2, +2)`. El siguiente vértice del cuadrado CCW es `(-2, -2)`. Yaw cardinal en `(-2, -2)`: `π ≈ 3.1416` (mirando a world -x).
 
 Bajamos `kp_xy` a `0.3` porque el goal está a 4 m de distancia — con `0.5` puede haber overshoot fuerte (no hay saturación, ver §"Idea pendiente").
 
@@ -382,19 +383,19 @@ Bajamos `kp_xy` a `0.3` porque el goal está a 4 m de distancia — con `0.5` pu
 
 ```bash
 ros2 launch lazo_cerrado lazo_cerrado.launch.py \
-    goal_mode:=FIXED fixed_goal_x:=-2.0 fixed_goal_y:=-2.0 fixed_goal_yaw:=-2.356 \
+    goal_mode:=FIXED fixed_goal_x:=-2.0 fixed_goal_y:=-2.0 fixed_goal_yaw:=3.1416 \
     kp_xy:=0.3 kp_yaw:=1.0
 ```
 
-**Qué observar visualmente** (T1): el robot **baja por el lado izquierdo del cuadrado** (de `(-2, +2)` a `(-2, -2)`) mientras rota progresivamente desde `π/2` hasta `-3π/4`. Es exactamente lo que hace en uno de los lados del PURSUIT.
+**Qué observar visualmente** (T1): el robot **baja por el lado izquierdo del cuadrado** (de `(-2, +2)` a `(-2, -2)`) mientras rota progresivamente desde `π/2` hasta `π`. Es exactamente lo que hace en uno de los lados del PURSUIT.
 
 **Qué observar en T4**: combinación de `linear.x`, `linear.y`, `angular.z` no nulos; magnitudes decrecientes a medida que el robot se acerca al goal.
 
-✅ **Pasa si**: llega cerca de `(-2, -2)` con yaw ≈ `-3π/4`. Pequeño overshoot u oscilación es aceptable con Kp bajo.
+✅ **Pasa si**: llega cerca de `(-2, -2)` con yaw ≈ `π`. Pequeño overshoot u oscilación es aceptable con Kp bajo.
 
 ⚠️ **Comportamiento esperado pero llamativo**: con `kp_xy = 0.3` y error inicial de 4 m, `cmd_vel.linear.y` inicial es `0.3 × 4 = 1.2 m/s`. Eso son ~24 rad/s por rueda — alto pero dentro del rango que el simulador maneja. Si aparecen oscilaciones crecientes, bajar a `kp_xy:=0.2`.
 
-❌ **Falla si**: la rotación se desacopla del avance y termina en una pose muy distinta a `(-2, -2, -3π/4)`.
+❌ **Falla si**: la rotación se desacopla del avance y termina en una pose muy distinta a `(-2, -2, π)`.
 
 → Reset cycle. Si llegaste hasta acá, el módulo está sano y se puede pasar al PURSUIT.
 
@@ -427,25 +428,24 @@ En la GUI de RViz, **agregar manualmente tres displays** (Add → Path / Pose):
 
 **Qué descubrís en este entorno**:
 
-- El robot arranca en `(-2, +2, π/2)`. La orientación radial saliente en ese punto sería `atan2(2, -2) ≈ 2.356 rad ≈ 135°`, no `90°` — hay un **error inicial de yaw de ~45°** que el controlador corrige en los primeros segundos. Esperable, no es bug.
-- El pursuit elige como primer goal el waypoint más cercano (cerca de `(-2, +2)`), no el primero del vector. Eso evita que el robot recorra el cuadrado al revés si arranca lejos del wp 0.
+- El robot arranca en `(-2, +2, π/2)`, que coincide con el primer waypoint de la trayectoria cardinal (yaw 90°): no hay error inicial de yaw.
+- El pursuit elige como primer goal el waypoint más cercano (el wp 0, en `(-2, +2)`).
 
 **Qué observar visualmente** (T1 + RViz):
 
 - `/desired_path` dibuja el cuadrado completo en RViz.
 - `/real_path` va trazando el recorrido real del robot (publish a ~3 Hz, no continuo).
 - `/goal_pose` se ve adelantarse al robot por `lookahead_distance` = 0.30 m.
-- El robot **strafea por los lados** rotando para mantener la orientación radial.
-- En cada esquina (cambio de lado del cuadrado): cambio brusco de ~90° en el yaw deseado → rotación más marcada, posible overshoot moderado. Zona crítica de tuning de `kp_yaw`.
-- Al cerrar la vuelta en `(+2, +2, π/4)` dentro de `position_tolerance` + `yaw_tolerance`, el log dice `"Trayectoria completada en (...)"`, el timer se cancela, último Twist publicado es cero.
+- El robot **strafea por los lados** rotando 90° de forma continua en cada lado (de un yaw cardinal al siguiente).
+- En las esquinas cambia la dirección de traslación pero el yaw deseado es continuo (no hay salto).
+- Al cerrar la vuelta en `(-2, +2)` con yaw 90° (una vuelta completa) dentro de `position_tolerance` + `yaw_tolerance`, el log dice `"Trayectoria completada en (...)"`, el timer se cancela, último Twist publicado es cero.
 
 **Qué observar en T4** (`ros2 topic echo /robot/cmd_vel`):
 
-- En los lados rectos: `linear.x` y `linear.y` no nulos (porque el robot strafea), `angular.z` chico y de signo constante (gira lentamente para mantener yaw radial).
-- En las esquinas: salto en `angular.z` cuando el waypoint perseguido pasa al lado siguiente.
+- En los lados rectos: `linear.x` y `linear.y` no nulos (porque el robot strafea), `angular.z` chico y de signo constante (gira 90° a lo largo del lado).
 - Al final: ráfaga de Twists ≈ 0 y luego silencio.
 
-✅ **Pasa si**: el robot recorre el cuadrado completo y se detiene cerca de `(+2, +2)` con yaw ≈ `π/4`. La traza de `/real_path` sigue al cuadrado con error visible pero acotado, sin grandes desvíos.
+✅ **Pasa si**: el robot recorre el cuadrado completo y se detiene cerca de `(-2, +2)` con yaw ≈ `π/2`. La traza de `/real_path` sigue al cuadrado con error visible pero acotado, sin grandes desvíos.
 
 ❌ **Falla común**:
 

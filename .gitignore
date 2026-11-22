@@ -7,5 +7,10 @@ experiments/*/bag/
 *.db3
 scripts/__pycache__
 
+# Tarballs de bags para subir como release asset. No versionamos los bags en git
+# (ni comprimidos) — se publican como release attachments; ver GitHub Releases.
+.release_staging/
+scripts/_tmp_*.py
+
 # Notas personales — no versionar. docs/ sí va al repo, docs_locales/ no.
 docs_locales/
