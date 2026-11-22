@@ -50,6 +50,7 @@ private:
 
   // Parametros
   std::string robot_frame_;
+  std::string marker_frame_;
   std::string laser_frame_;
   std::string scan_topic_;
 

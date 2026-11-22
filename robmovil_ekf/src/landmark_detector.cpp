@@ -16,6 +16,10 @@ LandmarkDetector::LandmarkDetector()
 {
   // Parametros
   robot_frame_                = this->declare_parameter<std::string>("robot_frame",  "base_link");
+  // Frame en el que se dibujan los marcadores de RViz. Las detecciones son relativas al
+  // robot; dibujarlas sobre la pose del EKF muestra si caen sobre los postes del mapa
+  // (con base_link quedarian corridas lo que derive la odometria).
+  marker_frame_               = this->declare_parameter<std::string>("marker_frame", "base_link_ekf");
   laser_frame_                = this->declare_parameter<std::string>("laser_frame",  "front_laser");
   scan_topic_                 = this->declare_parameter<std::string>("scan_topic",   "/robot/front_laser/scan");
   landmark_diameter_          = this->declare_parameter<double>("landmark_diameter",          0.1);
@@ -195,7 +199,7 @@ void LandmarkDetector::publishMarkers(
   // DELETEALL para limpiar los markers del scan anterior
   visualization_msgs::msg::Marker delete_all;
   delete_all.header.stamp    = stamp;
-  delete_all.header.frame_id = robot_frame_;
+  delete_all.header.frame_id = marker_frame_;
   delete_all.action = visualization_msgs::msg::Marker::DELETEALL;
   marker_array.markers.push_back(delete_all);
 
@@ -204,7 +208,7 @@ void LandmarkDetector::publishMarkers(
 
     visualization_msgs::msg::Marker m;
     m.header.stamp    = stamp;        // stamp del scan, nunca now()
-    m.header.frame_id = robot_frame_; // "base_link"
+    m.header.frame_id = marker_frame_;
     m.ns              = "landmarks";
     m.id              = static_cast<int>(i);
     m.type            = visualization_msgs::msg::Marker::CYLINDER;

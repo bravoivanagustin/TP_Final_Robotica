@@ -54,7 +54,7 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 1
+    - Alpha: 0.6
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
       Description File: /root/ros2_ws/src/robotica/URDF/nashe.urdf
@@ -309,6 +309,57 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /robot/ground_truth
       Value: false
+    - Angle Tolerance: 0.5
+      Class: rviz_default_plugins/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: false
+        Position:
+          Alpha: 0.4000000059604645
+          Color: 255; 140; 0
+          Scale: 10
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 40
+      Name: EKF
+      Position Tolerance: 0.5
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 140; 0
+        Head Length: 0.10000000149011612
+        Head Radius: 0.07000000029802322
+        Shaft Length: 0.30000001192092896
+        Shaft Radius: 0.029999999329447746
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot/odometry_ekf
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Postes detectados
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /landmark_markers
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

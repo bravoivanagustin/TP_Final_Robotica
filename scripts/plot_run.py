@@ -52,6 +52,13 @@ LANDMARKS_TOPIC = "/landmarks"
 # consistente tiene NEES dentro de este intervalo ~95% del tiempo, y media ≈ 3.
 NEES_CHI2_3_LO, NEES_CHI2_3_HI = 0.216, 9.348
 
+# Postes de la escena omni_ekf.ttt (lo que publica /posts una vez al dar play, en frame
+# map). Se fijan acá porque el grabador suele perderse ese único mensaje.
+POSTES_XY = np.array([
+    (0, 4), (-4, 2), (-4, 4), (-4, 0), (0, -4), (2, -4), (-2, 4), (2, 4),
+    (4, 4), (4, 2), (4, 0), (4, -2), (4, -4), (-2, -4), (-4, -4), (-4, -2),
+], dtype=float)
+
 REF_TRAJ_TOPIC = "/robot/trajectory"
 GOAL_POSE_TOPIC = "/goal_pose"
 TF_TOPICS = ("/tf", "/tf_static")
@@ -788,27 +795,142 @@ def plot_ekf_error_2sigma(e, out_path: Path, slug: str):
     plt.close(fig)
 
 
-def plot_ekf_sigma(ekf, landmarks, out_path: Path, slug: str):
-    t0 = ekf["t"][0]
-    n = 3 if landmarks else 2
-    fig, axes = plt.subplots(n, 1, figsize=(9, 2.6 * n + 1), sharex=True)
-    axes[0].plot(ekf["t"] - t0, np.sqrt(ekf["pxx"]), label="σx")
-    axes[0].plot(ekf["t"] - t0, np.sqrt(ekf["pyy"]), label="σy")
-    axes[0].set_ylabel("[m]")
-    axes[1].plot(ekf["t"] - t0, np.degrees(np.sqrt(ekf["ptt"])), color="C2", label="σθ")
-    axes[1].set_ylabel("[°]")
+def plot_ekf_sigma(ekf_entries, landmarks, out_path: Path, slug: str, ventana=None,
+                   zoom_s=3.0):
+    """Desvío estándar estimado por el EKF en el tiempo.
+
+    La incertidumbre oscila en serrucho: crece en cada predicción (odometría, 20 Hz) y
+    cae en cada corrección con postes (~7 Hz). A la escala de toda la corrida eso es una
+    mancha, así que se grafican las envolventes (máximo = antes de corregir, mínimo =
+    después de corregir) en ventanas de 0.5 s, más un zoom de `zoom_s` segundos con los
+    valores mensaje a mensaje. Se usan los mensajes en el orden en que se publicaron
+    (sin deduplicar por stamp) para no perder las correcciones.
+    """
+    if not ekf_entries:
+        return
+    t = np.array([m.header.stamp.sec + m.header.stamp.nanosec * 1e-9 for _, m in ekf_entries])
+    c = [m.pose.covariance for _, m in ekf_entries]
+    sxy = 100.0 * np.sqrt(0.5 * (np.array([x[0] for x in c]) + np.array([x[7] for x in c])))
+    sth = np.degrees(np.sqrt(np.array([x[35] for x in c])))
+    if ventana is not None:
+        k = (t >= ventana[0]) & (t <= ventana[1])
+        t, sxy, sth = t[k], sxy[k], sth[k]
+    if not len(t):
+        return
+    t0 = t[0]
+    tr = t - t0
+
+    def envolventes(v, ancho=0.5):
+        bordes = np.arange(0.0, tr[-1] + ancho, ancho)
+        tc, vmin, vmax = [], [], []
+        for b0 in bordes:
+            k = (tr >= b0) & (tr < b0 + ancho)
+            if k.any():
+                tc.append(b0 + ancho / 2)
+                vmin.append(v[k].min())
+                vmax.append(v[k].max())
+        return np.array(tc), np.array(vmin), np.array(vmax)
+
+    n = 4 if landmarks else 3
+    fig, axes = plt.subplots(n, 1, figsize=(9, 2.5 * n + 1))
+    for ax, v, unidad, nombre in ((axes[0], sxy, "cm", "σ_xy"), (axes[1], sth, "°", "σ_θ")):
+        tc, vmin, vmax = envolventes(v)
+        ax.fill_between(tc, vmin, vmax, color="C1", alpha=0.15)
+        ax.plot(tc, vmax, color="C3", label=f"{nombre} antes de corregir (máx.)")
+        ax.plot(tc, vmin, color="C0", label=f"{nombre} después de corregir (mín.)")
+        ax.set_ylabel(f"{nombre} [{unidad}]")
+        ax.set_ylim(bottom=0)
+        ax.grid(True)
+        ax.legend(loc="upper right", fontsize=8)
+
+    # Zoom en el medio de la corrida: valores mensaje a mensaje.
+    zc = tr[-1] / 2
+    k = (tr >= zc) & (tr <= zc + zoom_s)
+    axes[2].plot(tr[k], sxy[k], "-o", color="C1", markersize=3, linewidth=1)
+    axes[2].set_ylabel("σ_xy [cm]")
+    axes[2].set_ylim(bottom=0)
+    axes[2].set_title(f"Zoom de {zoom_s:.0f} s: crece en cada predicción, cae en cada corrección",
+                      fontsize=9)
+    axes[2].grid(True)
+    axes[0].axvspan(zc, zc + zoom_s, color="0.5", alpha=0.25)
+
     if landmarks:
         tl = np.array([m.header.stamp.sec + m.header.stamp.nanosec * 1e-9 for _, m in landmarks])
         nl = np.array([len(m.landmarks) for _, m in landmarks])
-        axes[2].step(tl - t0, nl, where="post", color="C7", label="postes detectados por scan")
-        axes[2].set_ylabel("postes")
-    for ax in axes:
-        ax.grid(True)
-        ax.legend(loc="upper right")
-    axes[-1].set_xlabel("t sim [s]")
-    fig.suptitle(f"Desvío estándar estimado por el EKF — {slug}")
+        if ventana is not None:
+            k = (tl >= ventana[0]) & (tl <= ventana[1])
+            tl, nl = tl[k], nl[k]
+        axes[3].step(tl - t0, nl, where="post", color="C7")
+        axes[3].set_ylabel("postes por scan")
+        axes[3].set_ylim(bottom=0)
+        axes[3].grid(True)
+        axes[3].set_xlim(axes[0].get_xlim())
+    axes[1].set_xlim(axes[0].get_xlim())
+    for ax in (axes[1], axes[-1]):
+        ax.set_xlabel("t sim [s]")
+    fig.suptitle(f"Incertidumbre estimada por el EKF en el tiempo — {slug}")
     fig.tight_layout()
     fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def plot_ekf_elipses(ekf, gt, out_path: Path, slug: str, ventana=None, ref_traj=None,
+                     n_elipses=16):
+    """Trayectoria con elipses de covarianza (2σ, x-y) del EKF en puntos del recorrido.
+
+    Equivalente al elipsoide de covarianza de RViz. Mientras el robot ve postes la
+    incertidumbre es de pocos cm, invisible a la escala de la arena, así que las
+    elipses se amplían por un factor que se indica en el título.
+    """
+    from matplotlib.patches import Ellipse
+
+    t = ekf["t"]
+    sel = np.ones(len(t), dtype=bool)
+    if ventana is not None:
+        sel = (t >= ventana[0]) & (t <= ventana[1])
+    idx_all = np.where(sel)[0]
+    if not len(idx_all):
+        return
+    idx = idx_all[np.linspace(0, len(idx_all) - 1, n_elipses, dtype=int)]
+
+    # Semiejes 2σ de cada elipse (autovalores de la covarianza x-y).
+    elipses = []
+    for i in idx:
+        P = np.array([[ekf["pxx"][i], ekf["pxy"][i]], [ekf["pxy"][i], ekf["pyy"][i]]])
+        val, vec = np.linalg.eigh(P)
+        val = np.clip(val, 0.0, None)
+        ang = math.degrees(math.atan2(vec[1, 1], vec[0, 1]))
+        elipses.append((ekf["x"][i], ekf["y"][i], 2 * np.sqrt(val[1]), 2 * np.sqrt(val[0]), ang))
+
+    # Factor de ampliación "redondo" para que la elipse típica mida ~10 cm de semieje.
+    semieje = np.median([e[2] for e in elipses])
+    escala = 1
+    for f in (1, 2, 5, 10, 20, 50, 100, 200, 500):
+        escala = f
+        if semieje * f >= 0.10:
+            break
+
+    fig, ax = plt.subplots(figsize=(7, 7))
+    if ref_traj is not None:
+        ax.plot(ref_traj[0], ref_traj[1], "k--", linewidth=1, label="referencia")
+    if gt is not None:
+        ax.plot(gt[1], gt[2], color="C2", linewidth=1.2, label="ground truth")
+    ax.plot(ekf["x"][sel], ekf["y"][sel], color="C1", linewidth=1.0, label="EKF")
+    for k, (x, y, a, b, ang) in enumerate(elipses):
+        ax.add_patch(Ellipse((x, y), 2 * a * escala, 2 * b * escala, angle=ang,
+                             fill=True, alpha=0.25, color="C1",
+                             label=f"elipse 2σ (×{escala})" if k == 0 else None))
+        ax.plot(x, y, ".", color="C1")
+    ax.scatter(POSTES_XY[:, 0], POSTES_XY[:, 1], marker="s", s=30, color="0.3", label="postes")
+    ax.set_aspect("equal")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.grid(True, alpha=0.4)
+    ax.legend(loc="lower left", fontsize=8, framealpha=0.9)
+    ax.set_title(f"Covarianza del EKF a lo largo del recorrido — elipses 2σ ampliadas ×{escala}\n{slug}",
+                 fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=130)
     plt.close(fig)
 
 
@@ -962,7 +1084,7 @@ def main():
     if ekf is not None:
         if gt is None:
             print("Aviso: hay EKF pero no GT en el bag — sólo se grafica σ.", file=sys.stderr)
-            plot_ekf_sigma(ekf, msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png", slug)
+            plot_ekf_sigma(msgs[EKF_TOPIC], msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png", slug)
         else:
             # Todo en sim-time (stamps de header) para comparar muestra a muestra.
             gt_sim = extract_gt_pose(tf_dyn, tf_sta, header_stamp=True)
@@ -971,8 +1093,12 @@ def main():
             e = ekf_errors(ekf, gt_sim, odom_sim, ventana)
             plot_ekf_vs_odom(e, plots_dir / "ekf_vs_odom_error.png", slug)
             plot_ekf_error_2sigma(e, plots_dir / "ekf_error_2sigma.png", slug)
-            plot_ekf_sigma(ekf, msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png", slug)
+            plot_ekf_sigma(msgs[EKF_TOPIC], msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png",
+                           slug, ventana)
             plot_ekf_nees(e, plots_dir / "ekf_nees.png", slug)
+            gt_xy = extract_gt_pose(tf_dyn, tf_sta)
+            plot_ekf_elipses(ekf, gt_xy, plots_dir / "ekf_elipses.png", slug, ventana,
+                             ref_traj=ref_traj)
             metricas = ekf_metrics(e)
             metricas["ventana_analizada_s"] = round(float(e["t"][-1] - e["t"][0]), 1)
             with (plots_dir / "metricas_ekf.yaml").open("w") as f:

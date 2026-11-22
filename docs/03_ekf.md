@@ -108,17 +108,24 @@ ros2 launch robmovil_ekf localizer.launch.py [sigma_x:=... only_prediction:=true
 
 `only_prediction:=true` desactiva las correcciones (EKF = odometría), útil como control en los experimentos.
 
-## Primera validación (2026-11-22)
+## Experimentos (2026-11-22, Q y R elegidos)
 
-Cuadrado completo con `seguimiento_ekf.launch.py` (controller con defaults, lookahead 0,30), comparando contra `base_link_gt` a 1 Hz:
+Todos con `scripts/run_experiment.sh` (`esperar_play: true`) y `scripts/plot_run.py`, que genera para el EKF: `ekf_vs_odom_error`, `ekf_sigma` (incertidumbre en el tiempo), `ekf_elipses` (elipses 2σ sobre el recorrido) y `metricas_ekf.yaml`.
 
-| | error medio | error máx. | error final | yaw final |
-|---|---|---|---|---|
-| EKF | 0,036 m | 0,049 m | 0,040 m | +0,1° |
-| odometría | — | 0,97 m | 0,96 m | −19,3° |
+| Corrida | Qué es | EKF vs GT (medio / máx) | Odometría al final |
+|---|---|---|---|
+| `ekf_circulo` | localización con velocidades constantes (consigna): círculo R = 1,5 m, 2 vueltas | 1,4 / 4,1 cm | 21 cm, 6,2° |
+| `ekf_cuadrado_q_grande` | cuadrado con el controlador sobre la odometría y el EKF pasivo | 1,2 / 1,8 cm | 87 cm, 19,6° |
+| `ekf_cuadrado_lazo` | cuadrado con el controlador sobre el EKF (ítem 5) | 1,2 / 2,3 cm | 1 m, 19° |
 
-El robot real cerró a ~4 cm de `(-2, 2)`. El error del EKF es casi constante (~4 cm, hacia afuera del cuadrado): probablemente el sesgo del centroide.
+Seguimiento (robot real vs referencia): con el EKF en el lazo 2,3 cm de error medio y llegada a 3,2 cm de `(-2, 2)`; con la odometría, 21,8 cm y 85,5 cm.
+
+Covarianza:
+- Con postes a la vista oscila en serrucho entre ~0,6 cm (después de cada corrección, ~7 Hz) y ~3,5 cm (después de 2-3 predicciones, 20 Hz). Por eso las elipses de RViz tienen tamaños distintos: cada una cae en un instante distinto del ciclo.
+- En el círculo hay un tramo de ~6 s por vuelta sin postes a la vista: σ_xy sube hasta 24 cm y σ_θ hasta 6,4°, y cae a < 1 cm al volver a verlos. El error real en ese tramo sólo llega a ~4 cm: Q es conservador, como pide la consigna.
+
+Capturas de RViz (elipses 2σ ×10): `experiments/2026-11-22-ekf_cuadrado_lazo/plots/rviz_covarianza.png` y `experiments/2026-11-22-ekf_circulo/plots/rviz_covarianza.png`. Config: `coppeliaSim/tpfinal.rviz` (displays EKF y Postes detectados; el RobotModel dibuja la pose real, `base_link_gt`).
 
 ## Pendiente
 
-- Experimentos para el informe con el framework (`experiments/`, `esperar_play: true`), con los Q y R elegidos: (a) solo localización con velocidad constante (círculo), EKF vs odometría vs GT; (b) cuadrado con EKF en el lazo; (c) capturas de RViz con la elipse de covarianza.
+- Pasar al informe: modelos (f, h, Jacobianos), elección de Q y R, los tres experimentos y las capturas de RViz.
