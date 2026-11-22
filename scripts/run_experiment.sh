@@ -6,7 +6,8 @@
 # (o al watchdog `duracion_maxima_s`), después flushea el bag y mata todo.
 #
 # El simulador NO se lanza desde acá: es pesado, visual, requiere X11 y su vida útil
-# suele exceder una corrida. Asumimos que ya está corriendo en otra terminal.
+# suele exceder una corrida. Asumimos que ya está abierto en otra terminal: corriendo,
+# o detenido si el manifest pide `esperar_play: true` (experimentos con EKF).
 #
 # Uso: bash scripts/run_experiment.sh <experiments/YYYY-MM-DD_slug>
 # Correr DENTRO del contenedor Docker, con `source install/setup.bash` ya hecho.
@@ -83,6 +84,22 @@ cmd_args="$(get_launch_args cmd_source.args)"
 duracion_max="$(get_field duracion_maxima_s)"
 : "${duracion_max:=120}"
 
+# esperar_play: true → el backend se levanta con la simulación DETENIDA y el driver
+# arranca recién cuando aparece /clock (el usuario dio play). Necesario para el EKF:
+# /posts se publica una sola vez al dar play, y el stop/play reinicia el sim-time.
+esperar_play="$(get_field esperar_play)"
+[[ "$esperar_play" == "True" || "$esperar_play" == "true" ]] && esperar_play=true || esperar_play=false
+
+sim_corriendo() {
+  timeout "${1:-3}" ros2 topic echo --once /clock rosgraph_msgs/msg/Clock >/dev/null 2>&1
+}
+
+if $esperar_play && sim_corriendo 3; then
+  echo "La simulación está corriendo y este experimento necesita arrancar con ella detenida" >&2
+  echo "(esperar_play: true). Dale stop en CoppeliaSim y volvé a correr." >&2
+  exit 1
+fi
+
 if [[ -z "$cmd_tipo" ]]; then
   echo "El manifest no declara cmd_source.tipo — abortando." >&2
   exit 1
@@ -145,6 +162,18 @@ bash "$script_dir/record.sh" "$dir" &
 PID_REC=$!
 PIDS+=("$PID_REC")
 sleep 2
+
+if $esperar_play; then
+  echo ""
+  echo ">>> Backend y grabación listos. Dale PLAY en CoppeliaSim (espero hasta 10 min)..."
+  if ! sim_corriendo 600; then
+    echo "No apareció /clock en 10 min — abortando." >&2
+    exit 1
+  fi
+  echo ">>> Simulación corriendo."
+  # margen para que el EKF se inicialice con la primera odometría
+  sleep 3
+fi
 
 # --- 3. Driver ---
 echo "[3/3] Driver: $cmd_tipo (watchdog=${duracion_max}s)"

@@ -9,6 +9,8 @@ Los plots dependen de `cmd_source.tipo` en el manifest:
   - open_loop_twist  → xy_path, body_velocity, odom_vs_cmd, wheel_velocities (módulo 1).
   - closed_loop_launch → módulo 1 + tracking_error, yaw_error, goal_pose_vs_pose
                           (módulo 2, requiere /robot/trajectory en el bag).
+  - si el bag tiene /robot/odometry_ekf (módulo 3): ekf_vs_odom_error, ekf_error_2sigma,
+    ekf_sigma, ekf_nees y metricas_ekf.yaml (errores, % dentro de ±2σ, NEES).
 
 xy_path dibuja la pose integrada por odometría. Si el bag contiene /tf con un
 TF `child=base_link_gt` (sim lo publica si grabamos /tf y /tf_static), suma como
@@ -44,12 +46,18 @@ except ImportError as e:
     sys.exit(1)
 
 
+EKF_TOPIC = "/robot/odometry_ekf"
+LANDMARKS_TOPIC = "/landmarks"
+# Cuantiles 2.5% y 97.5% de una chi-cuadrado con 3 gl (estado x, y, θ). Un filtro
+# consistente tiene NEES dentro de este intervalo ~95% del tiempo, y media ≈ 3.
+NEES_CHI2_3_LO, NEES_CHI2_3_HI = 0.216, 9.348
+
 REF_TRAJ_TOPIC = "/robot/trajectory"
 GOAL_POSE_TOPIC = "/goal_pose"
 TF_TOPICS = ("/tf", "/tf_static")
 
 # Frame del ground truth que publica CoppeliaSim. CLAUDE.md §"Simulator interface" lo
-# establece: el sim mantiene map → odom (identidad) y odom → base_link_gt como cadena
+# establece: el sim mantiene map → odom (pose de spawn) y odom → base_link_gt como cadena
 # paralela a la que nuestra odometría integra (odom → base_link). Lo usamos SOLO para
 # evidencia (plots, métricas) — nunca como feedback de control (ídem consigna).
 GT_CHILD_FRAME = "base_link_gt"
@@ -208,10 +216,12 @@ def extract_wheel_encoder_velocities(entries):
     return result
 
 
-def extract_gt_pose(tf_entries, tf_static_entries):
+def extract_gt_pose(tf_entries, tf_static_entries, header_stamp=False):
     """Reconstruye la pose GT en frame map a partir de /tf y /tf_static.
 
     Devuelve (ts, xs, ys, yaws) con la pose de `base_link_gt` expresada en `map`.
+    ts es bag-time por default; con header_stamp=True es el stamp de la TF (sim-time),
+    que es lo que hace falta para alinear con /robot/odometry_ekf muestra a muestra.
 
     Convención de la escena (ver CLAUDE.md §"Simulator interface"):
       map → odom          (publicada por el sim; estática o ~6 Hz dinámica)
@@ -280,7 +290,10 @@ def extract_gt_pose(tf_entries, tf_static_entries):
                 if composed is None:
                     continue  # cadena no cerrable todavía (map→odom aún no llegó)
                 x_m, y_m, yaw_m = composed
-            ts.append(t_bag)
+            if header_stamp:
+                ts.append(tr.header.stamp.sec + tr.header.stamp.nanosec * 1e-9)
+            else:
+                ts.append(t_bag)
             xs.append(x_m)
             ys.append(y_m)
             yaws.append(yaw_m)
@@ -343,10 +356,12 @@ def extract_wheel_cmd(entries):
     return ts, values
 
 
-def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None):
+def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None, ekf=None, map_odom=None):
     ts, x, y, yaw, vx, vy, wz = odom
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.plot(x, y, label="odometría", color="C0")
+    if ekf is not None and len(ekf["x"]):
+        ax.plot(ekf["x"], ekf["y"], label="EKF", color="C1", linewidth=1.2)
     if len(x):
         ax.scatter([x[0]], [y[0]], marker="o", label="inicio")
         ax.scatter([x[-1]], [y[-1]], marker="x", label="fin")
@@ -373,8 +388,9 @@ def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None):
             xs_all.append(np.asarray(xr))
             ys_all.append(np.asarray(yr))
     else:
-        # Overlay analítico circular para módulo 1: círculo de radio R = vx/wz,
-        # asumiendo el robot arranca en (0, 0) con θ = 0 (giro CCW ⇒ centro en (0, R)).
+        # Overlay analítico circular: círculo de radio R = vx/wz arrancando en el origen
+        # de `odom` con θ = 0 (giro CCW ⇒ centro en (0, R)); después se lleva a `map`
+        # con el mismo offset map→odom que la odometría.
         tray = manifest.get("trayectoria") or {}
         if tray.get("tipo") == "circular":
             p = tray.get("parametros") or {}
@@ -385,6 +401,10 @@ def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None):
                 theta = np.linspace(0.0, 2.0 * math.pi, 200)
                 x_ana = R * np.sin(theta)
                 y_ana = R * (1.0 - np.cos(theta))
+                if map_odom is not None:
+                    dx, dy, dyaw = map_odom
+                    c, s = math.cos(dyaw), math.sin(dyaw)
+                    x_ana, y_ana = dx + c * x_ana - s * y_ana, dy + s * x_ana + c * y_ana
                 ax.plot(x_ana, y_ana, "--", label=f"circular analítico R={R:.3f} m")
                 xs_all.append(x_ana)
                 ys_all.append(y_ana)
@@ -623,6 +643,205 @@ def plot_wheel_velocities(enc_wheels, cmd_wheels, out_path: Path, slug: str):
     plt.close(fig)
 
 
+# --- Módulo 3: EKF ---------------------------------------------------------------
+
+def extract_ekf(entries):
+    """/robot/odometry_ekf → dict con pose y covarianza, ordenado por stamp (sim-time).
+
+    El nodo publica tras cada predicción (stamp de la odometría) y tras cada corrección
+    (stamp del scan, que suele coincidir con uno ya publicado). Ordenamos por stamp y,
+    ante stamps repetidos, nos quedamos con el último publicado: el corregido.
+    """
+    rows = {}
+    for _, m in entries:
+        t = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+        q = m.pose.pose.orientation
+        c = m.pose.covariance  # 6x6 row-major sobre (x, y, z, roll, pitch, yaw)
+        rows[t] = (m.pose.pose.position.x, m.pose.pose.position.y,
+                   quat_to_yaw(q.x, q.y, q.z, q.w),
+                   c[0], c[1], c[5], c[7], c[11], c[35])
+    ts = np.array(sorted(rows))
+    if not len(ts):
+        return None
+    a = np.array([rows[t] for t in ts])
+    keys = ["x", "y", "yaw", "pxx", "pxy", "pxt", "pyy", "pyt", "ptt"]
+    out = {k: a[:, i] for i, k in enumerate(keys)}
+    out["t"] = ts
+    return out
+
+
+def odom_sim_time(entries, offset):
+    """Pose de /robot/odometry en frame map, con el stamp del header (sim-time)."""
+    ts = np.array([m.header.stamp.sec + m.header.stamp.nanosec * 1e-9 for _, m in entries])
+    o = apply_map_odom_offset(extract_odom(entries), offset)
+    return ts, o[1], o[2], o[3]
+
+
+def interp_pose(t_query, ts, xs, ys, yaws):
+    """Interpola una trayectoria (x, y, yaw) en t_query; yaw se desenvuelve antes."""
+    order = np.argsort(ts)
+    ts, xs, ys, yaws = ts[order], xs[order], ys[order], yaws[order]
+    return (np.interp(t_query, ts, xs), np.interp(t_query, ts, ys),
+            np.interp(t_query, ts, np.unwrap(yaws)))
+
+
+def wrap(a):
+    return np.arctan2(np.sin(a), np.cos(a))
+
+
+def ekf_errors(ekf, gt_sim, odom_sim):
+    """Errores EKF−GT y odom−GT en los instantes del EKF (dentro del rango del GT)."""
+    tg, xg, yg, thg = gt_sim
+    t = ekf["t"]
+    mask = (t >= tg.min()) & (t <= tg.max())
+    t = t[mask]
+    gx, gy, gth = interp_pose(t, tg, xg, yg, thg)
+    e = {
+        "t": t,
+        "ex": ekf["x"][mask] - gx,
+        "ey": ekf["y"][mask] - gy,
+        "et": wrap(ekf["yaw"][mask] - gth),
+    }
+    for k in ["pxx", "pxy", "pxt", "pyy", "pyt", "ptt"]:
+        e[k] = ekf[k][mask]
+    to, xo, yo, tho = odom_sim
+    ox, oy, oth = interp_pose(t, to, xo, yo, tho)
+    e["odom_ex"], e["odom_ey"], e["odom_et"] = ox - gx, oy - gy, wrap(oth - gth)
+
+    # NEES = eᵀ P⁻¹ e por muestra.
+    nees = np.full(len(t), np.nan)
+    for i in range(len(t)):
+        P = np.array([[e["pxx"][i], e["pxy"][i], e["pxt"][i]],
+                      [e["pxy"][i], e["pyy"][i], e["pyt"][i]],
+                      [e["pxt"][i], e["pyt"][i], e["ptt"][i]]])
+        v = np.array([e["ex"][i], e["ey"][i], e["et"][i]])
+        try:
+            nees[i] = float(v @ np.linalg.solve(P, v))
+        except np.linalg.LinAlgError:
+            pass
+    e["nees"] = nees
+    return e
+
+
+def plot_ekf_vs_odom(e, out_path: Path, slug: str):
+    t = e["t"] - e["t"][0]
+    fig, axes = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
+    axes[0].plot(t, np.hypot(e["ex"], e["ey"]), color="C1", label="EKF")
+    axes[0].plot(t, np.hypot(e["odom_ex"], e["odom_ey"]), color="C0", label="odometría")
+    axes[0].set_ylabel("error de posición [m]")
+    axes[1].plot(t, np.degrees(e["et"]), color="C1", label="EKF")
+    axes[1].plot(t, np.degrees(e["odom_et"]), color="C0", label="odometría")
+    axes[1].set_ylabel("error de yaw [°]")
+    axes[1].set_xlabel("t sim [s]")
+    for ax in axes:
+        ax.grid(True)
+        ax.legend()
+    fig.suptitle(f"Error vs ground truth: EKF y odometría — {slug}")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def plot_ekf_error_2sigma(e, out_path: Path, slug: str):
+    t = e["t"] - e["t"][0]
+    canales = [
+        (e["ex"], np.sqrt(e["pxx"]), "error x [m]", 1.0),
+        (e["ey"], np.sqrt(e["pyy"]), "error y [m]", 1.0),
+        (e["et"], np.sqrt(e["ptt"]), "error θ [°]", 180.0 / math.pi),
+    ]
+    fig, axes = plt.subplots(3, 1, figsize=(9, 8), sharex=True)
+    for ax, (err, sig, name, k) in zip(axes, canales):
+        ax.fill_between(t, -2 * sig * k, 2 * sig * k, color="C1", alpha=0.2, label="±2σ")
+        ax.plot(t, err * k, color="C1", linewidth=1.0, label="error EKF")
+        dentro = 100.0 * np.mean(np.abs(err) <= 2 * sig)
+        # Escala: que se vea el error y la banda típica; los picos de σ (tramos sin
+        # postes a la vista) quedan recortados en vez de aplastar todo el gráfico.
+        lim = 1.5 * k * max(np.max(np.abs(err)), np.median(2 * sig))
+        ax.set_ylim(-lim, lim)
+        ax.set_ylabel(name)
+        ax.set_title(f"{dentro:.0f}% de las muestras dentro de ±2σ", fontsize=9)
+        ax.grid(True)
+        ax.legend(loc="upper right")
+    axes[-1].set_xlabel("t sim [s]")
+    fig.suptitle(f"Error del EKF con bandas de ±2σ — {slug}")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def plot_ekf_sigma(ekf, landmarks, out_path: Path, slug: str):
+    t0 = ekf["t"][0]
+    n = 3 if landmarks else 2
+    fig, axes = plt.subplots(n, 1, figsize=(9, 2.6 * n + 1), sharex=True)
+    axes[0].plot(ekf["t"] - t0, np.sqrt(ekf["pxx"]), label="σx")
+    axes[0].plot(ekf["t"] - t0, np.sqrt(ekf["pyy"]), label="σy")
+    axes[0].set_ylabel("[m]")
+    axes[1].plot(ekf["t"] - t0, np.degrees(np.sqrt(ekf["ptt"])), color="C2", label="σθ")
+    axes[1].set_ylabel("[°]")
+    if landmarks:
+        tl = np.array([m.header.stamp.sec + m.header.stamp.nanosec * 1e-9 for _, m in landmarks])
+        nl = np.array([len(m.landmarks) for _, m in landmarks])
+        axes[2].step(tl - t0, nl, where="post", color="C7", label="postes detectados por scan")
+        axes[2].set_ylabel("postes")
+    for ax in axes:
+        ax.grid(True)
+        ax.legend(loc="upper right")
+    axes[-1].set_xlabel("t sim [s]")
+    fig.suptitle(f"Desvío estándar estimado por el EKF — {slug}")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def plot_ekf_nees(e, out_path: Path, slug: str):
+    t = e["t"] - e["t"][0]
+    nees = e["nees"]
+    ok = np.isfinite(nees) & (nees > 0)
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.semilogy(t[ok], nees[ok], color="C1", linewidth=0.8, label="NEES")
+    ax.axhline(3.0, color="k", linestyle="--", linewidth=1, label="valor esperado (3)")
+    ax.axhspan(NEES_CHI2_3_LO, NEES_CHI2_3_HI, color="C2", alpha=0.15,
+               label="intervalo 95% χ²₃")
+    ax.set_xlabel("t sim [s]")
+    ax.set_ylabel("eᵀ P⁻¹ e")
+    ax.set_title(f"NEES — media {np.nanmean(nees):.2f} — {slug}")
+    ax.grid(True, which="both", alpha=0.4)
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def ekf_metrics(e):
+    pe = np.hypot(e["ex"], e["ey"])
+    po = np.hypot(e["odom_ex"], e["odom_ey"])
+    nees = e["nees"][np.isfinite(e["nees"])]
+    f = lambda v: round(float(v), 4)  # noqa: E731
+    return {
+        "ekf": {
+            "error_pos_medio_m": f(pe.mean()), "error_pos_max_m": f(pe.max()),
+            "error_pos_final_m": f(pe[-1]),
+            "error_yaw_medio_deg": f(np.degrees(np.abs(e["et"])).mean()),
+            "error_yaw_max_deg": f(np.degrees(np.abs(e["et"])).max()),
+            "error_yaw_final_deg": f(np.degrees(e["et"][-1])),
+        },
+        "odometria": {
+            "error_pos_medio_m": f(po.mean()), "error_pos_max_m": f(po.max()),
+            "error_pos_final_m": f(po[-1]),
+            "error_yaw_final_deg": f(np.degrees(e["odom_et"][-1])),
+        },
+        "consistencia": {
+            "dentro_2sigma_x": f(np.mean(np.abs(e["ex"]) <= 2 * np.sqrt(e["pxx"]))),
+            "dentro_2sigma_y": f(np.mean(np.abs(e["ey"]) <= 2 * np.sqrt(e["pyy"]))),
+            "dentro_2sigma_theta": f(np.mean(np.abs(e["et"]) <= 2 * np.sqrt(e["ptt"]))),
+            "nees_medio": f(nees.mean()),
+            "nees_dentro_intervalo_95": f(np.mean((nees >= NEES_CHI2_3_LO) & (nees <= NEES_CHI2_3_HI))),
+            "sigma_xy_medio_m": f(np.sqrt(0.5 * (e["pxx"] + e["pyy"])).mean()),
+            "sigma_theta_medio_deg": f(np.degrees(np.sqrt(e["ptt"])).mean()),
+        },
+    }
+
+
 def is_closed_loop(manifest: dict) -> bool:
     cs = manifest.get("cmd_source") or {}
     if isinstance(cs, str):
@@ -661,6 +880,7 @@ def main():
 
     topics = ["/robot/odometry", "/robot/cmd_vel", ENCODER_TOPIC] + WHEEL_CMD_TOPICS
     topics += list(TF_TOPICS)  # para reconstruir la pose GT desde /tf.
+    topics += [EKF_TOPIC, LANDMARKS_TOPIC]  # módulo 3 (si no están en el bag, quedan vacíos)
     if closed_loop:
         topics += [REF_TRAJ_TOPIC, GOAL_POSE_TOPIC]
 
@@ -710,12 +930,33 @@ def main():
             file=sys.stderr,
         )
 
+    ekf = extract_ekf(msgs.get(EKF_TOPIC, []))
+
     print("Generando plots...")
     # xy_path y los plots de módulo 2 (tracking_error, yaw_error) usan pose en
     # map: así la odometría, la referencia y el GT caen en el mismo frame y las
     # distancias tienen sentido físico. El resto (body_velocity, odom_vs_cmd,
     # wheel_velocities) vive en el marco del robot/odom y no cambia.
-    plot_xy(odom_in_map, manifest, plots_dir / "xy_path.png", ref_traj=ref_traj, gt=gt)
+    plot_xy(odom_in_map, manifest, plots_dir / "xy_path.png", ref_traj=ref_traj, gt=gt, ekf=ekf,
+            map_odom=map_odom)
+
+    if ekf is not None:
+        if gt is None:
+            print("Aviso: hay EKF pero no GT en el bag — sólo se grafica σ.", file=sys.stderr)
+            plot_ekf_sigma(ekf, msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png", slug)
+        else:
+            # Todo en sim-time (stamps de header) para comparar muestra a muestra.
+            gt_sim = extract_gt_pose(tf_dyn, tf_sta, header_stamp=True)
+            odom_sim = odom_sim_time(msgs["/robot/odometry"], map_odom)
+            e = ekf_errors(ekf, gt_sim, odom_sim)
+            plot_ekf_vs_odom(e, plots_dir / "ekf_vs_odom_error.png", slug)
+            plot_ekf_error_2sigma(e, plots_dir / "ekf_error_2sigma.png", slug)
+            plot_ekf_sigma(ekf, msgs.get(LANDMARKS_TOPIC, []), plots_dir / "ekf_sigma.png", slug)
+            plot_ekf_nees(e, plots_dir / "ekf_nees.png", slug)
+            metricas = ekf_metrics(e)
+            with (plots_dir / "metricas_ekf.yaml").open("w") as f:
+                yaml.safe_dump(metricas, f, sort_keys=False, allow_unicode=True)
+            print(yaml.safe_dump(metricas, sort_keys=False, allow_unicode=True))
     plot_body_velocity(odom, cmd, plots_dir / "body_velocity.png", slug)
     plot_odom_vs_cmd(odom, cmd, plots_dir / "odom_vs_cmd.png", slug)
     plot_wheel_velocities(enc_wheels, cmd_wheels, plots_dir / "wheel_velocities.png", slug)

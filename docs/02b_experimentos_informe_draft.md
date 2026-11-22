@@ -13,6 +13,7 @@ Sidecar del deep-dive `docs/02_lazo_cerrado.md`.
 |---|---|---|
 | 2026-11-21 | Primera versión, barrido con yaw `atan2(y, x)` | Cerrar módulo 2 |
 | 2026-11-22 | Reescrito con el barrido de yaw "cardinal" | Se adoptó la convención de la figura de la consigna; las corridas `atan2` se descartaron |
+| 2026-11-22 | Sin barrido de lookahead; tune `kp_yaw = 0.75` | La consigna sólo pide variar las constantes P; se agrega el error de seguimiento vs setpoint |
 
 ---
 
@@ -41,17 +42,15 @@ Se adoptó la **cardinal** por dos motivos:
 
 ## Diseño del barrido
 
-Barridos univariados alrededor de un punto central (`kp_xy=0.8`, `kp_yaw=1.5`,
-`lookahead_distance=0.30`), como pide la consigna (al menos 3 valores por
-constante):
+Barridos univariados de las dos constantes del controlador P alrededor de un
+punto central (`kp_xy=0.8`, `kp_yaw=1.5`), con 3 valores cada una:
 
 - **`kp_xy`** ∈ {0.4, 0.8, 1.6}
 - **`kp_yaw`** ∈ {0.75, 1.5, 3.0}
-- **`lookahead_distance`** ∈ {0.15, 0.30, 0.60}: no es una constante del
-  controlador P, pero controla la velocidad comandada por otra vía (el goal
-  queda más cerca o más lejos del robot), así que sirve de control.
-- **Combinación**: `lookahead=0.15` + `kp_yaw=0.75`, las dos palancas que
-  mejoraron el drift_fin respecto del punto central.
+
+La distancia de lookahead del pursuit queda fija en 0.30 m en todas las
+corridas: es un parámetro de la selección de waypoints, no del controlador, y
+la consigna no pide variarlo.
 
 Cada corrida recorre el cuadrado completo (16 m de perímetro) en la escena
 `coppeliaSim/omni_ekf.ttt`. Las métricas se calculan en post-proceso a partir
@@ -59,8 +58,14 @@ de los bags (`scripts/plot_run.py` para los gráficos).
 
 ### Qué se mide
 
-Además del error pose-vs-setpoint que pide la consigna, se reporta el
-**error GT vs odometría**: la distancia entre la pose real del simulador
+**Seguimiento (lo que pide la consigna):** error entre la pose del robot según
+su feedback (odometría) y la referencia, tomando en cada instante el waypoint
+más cercano.
+
+- `seg_pos`: distancia media al waypoint más cercano.
+- `seg_yaw`: error angular medio (y máximo) contra el yaw de ese waypoint.
+
+**Deslizamiento:** además se reporta el **error GT vs odometría**: la distancia entre la pose real del simulador
 (`map → odom → base_link_gt`) y la pose estimada por el módulo 1. Ese error es
 el deslizamiento de los rodillos Mecanum, que los encoders no ven, y es lo que
 el controlador no puede corregir porque su feedback es la propia odometría.
@@ -74,71 +79,71 @@ el controlador no puede corregir porque su feedback es la propia odometría.
 
 ## Resultados
 
-| Corrida | `lookahead` | `kp_xy` | `kp_yaw` | drift_fin | drift_med | drift_max | yaw_err |
-|---|---|---|---|---|---|---|---|
-| **combinación** | 0.15 | 0.8 | 0.75 | **0.796 m** | 0.685 m | **0.811 m** | **18.1°** |
-| lookahead 0.15 | 0.15 | 0.8 | 1.5 | 0.835 m | **0.564 m** | 0.840 m | 18.4° |
-| kp_yaw 0.75 | 0.30 | 0.8 | 0.75 | 0.888 m | 0.869 m | 0.900 m | 20.7° |
-| kp_xy 0.4 | 0.30 | 0.4 | 1.5 | 0.909 m | 0.741 m | 0.923 m | 20.4° |
-| **baseline** | 0.30 | 0.8 | 1.5 | 0.917 m | 0.660 m | 0.919 m | 20.9° |
-| kp_yaw 3.0 | 0.30 | 0.8 | 3.0 | 1.011 m | 0.794 m | 1.017 m | 23.0° |
-| kp_xy 1.6 | 0.30 | 1.6 | 1.5 | 2.121 m | 2.068 m | 2.193 m | 49.8° |
-| lookahead 0.60 | 0.60 | 0.8 | 1.5 | 2.184 m | 1.663 m | 2.187 m | 50.1° |
+| Corrida | `kp_xy` | `kp_yaw` | seg_pos | seg_yaw medio / máx | drift_fin | drift_med | drift_max | yaw_err |
+|---|---|---|---|---|---|---|---|---|
+| **kp_yaw 0.75** | 0.8 | 0.75 | 2.3 cm | **0.7° / 3.7°** | **0.888 m** | 0.869 m | **0.900 m** | 20.7° |
+| kp_xy 0.4 | 0.4 | 1.5 | 2.0 cm | 4.1° / 10.5° | 0.909 m | 0.741 m | 0.923 m | **20.4°** |
+| baseline | 0.8 | 1.5 | 2.2 cm | 2.9° / 7.6° | 0.917 m | **0.660 m** | 0.919 m | 20.9° |
+| kp_yaw 3.0 | 0.8 | 3.0 | 2.2 cm | 4.0° / 10.6° | 1.011 m | 0.794 m | 1.017 m | 23.0° |
+| kp_xy 1.6 | 1.6 | 1.5 | **1.7 cm** | 0.9° / 3.8° | 2.121 m | 2.068 m | 2.193 m | 49.8° |
 
 Todas las corridas completan la trayectoria: el controlador llega al último
 waypoint dentro de las tolerancias de posición y yaw. Lo que cambia es dónde
 queda físicamente el robot según el GT.
 
-Las corridas con lookahead 0.15 tardan aproximadamente el doble que el
-baseline, y la de `kp_xy = 0.4` más del doble.
+La corrida de `kp_xy = 0.4` tarda más del doble que el baseline.
 
 ---
 
 ## Análisis
 
-### La velocidad traslacional es la palanca dominante
+### El seguimiento contra el setpoint es bueno en todos los casos
 
-- **Velocidades altas rompen el seguimiento.** `kp_xy = 1.6` y
-  `lookahead = 0.60` duplican el drift (> 2 m) y llevan el error angular a
-  ~50°. En el `xy_path` el GT recorta las esquinas y deforma el cuadrado.
-- **Bajar la velocidad vía lookahead ayuda.** `lookahead = 0.15` es la única
-  palanca individual que mejora de forma clara: −9% de drift_fin y −15% de
-  drift_med respecto del baseline.
-- **Bajar la velocidad vía `kp_xy` no ayuda.** `kp_xy = 0.4` deja el drift_fin
-  igual y empeora el drift_med, con más del doble de tiempo de corrida. A
-  diferencia del lookahead, `kp_xy` también achica la respuesta ante errores
-  laterales, y el robot acumula más desvío dentro de cada lado.
+Según su propio feedback, el robot sigue la referencia con ~2 cm de error medio
+en todas las corridas: el controlador P converge con cualquiera de las
+ganancias probadas. Las diferencias aparecen en el yaw y, sobre todo, en el
+deslizamiento que la odometría no ve.
 
-### La ganancia angular importa poco
+### La ganancia traslacional es la palanca dominante
 
-- `kp_yaw = 0.75` deja el drift_fin parecido al baseline (0.89 contra 0.92 m)
-  pero empeora el drift_med: el robot va más atrasado en yaw durante el lado.
-- `kp_yaw = 3.0` empeora todo un ~10%. Con la convención cardinal no hay
-  transiente inicial de orientación, así que una ganancia angular agresiva no
-  tiene error grande que corregir y solo reacciona a los saltos del cursor del
-  pursuit, sumando rotación mientras el robot traslada.
+- **`kp_xy` alto rompe la trayectoria real.** Con `kp_xy = 1.6` el robot sigue
+  muy bien la referencia *según la odometría* (el mejor seg_pos, 1.7 cm), pero
+  el drift se duplica (> 2 m) y el error angular real llega a ~50°: a más
+  velocidad, más slip de los rodillos. En el `xy_path` el GT recorta las
+  esquinas y deforma el cuadrado. Es el ejemplo más claro de que un buen
+  seguimiento del setpoint no garantiza una buena trayectoria real cuando el
+  feedback es odométrico.
+- **`kp_xy` bajo no ayuda.** `kp_xy = 0.4` deja el drift_fin igual, empeora el
+  seguimiento angular y tarda más del doble.
 
-### La combinación
+### La ganancia angular
 
-`lookahead = 0.15` + `kp_yaw = 0.75` da el mejor drift_fin (0.80 m) y el mejor
-error angular, pero peor drift_med que `lookahead = 0.15` solo (0.69 contra
-0.56 m). Con una corrida por configuración, la diferencia entre las dos está
-dentro de la variabilidad esperable: quedan empatadas.
+- `kp_yaw = 0.75` da el mejor seguimiento angular (0.7° medio, 3.7° máximo) y
+  el mejor drift_fin, con el mismo seguimiento en posición. Como contra, el
+  drift a mitad de vuelta (drift_med) es mayor que el del baseline.
+- `kp_yaw = 3.0` empeora todo: ~10% más de drift y el peor seguimiento
+  angular. Con la convención cardinal no hay transiente inicial de
+  orientación, así que una ganancia angular agresiva no tiene error grande que
+  corregir y solo reacciona a los saltos del cursor del pursuit, sumando
+  rotación mientras el robot traslada.
+
+Con una corrida por configuración, diferencias de pocos centímetros en el
+drift (0.89 / 0.91 / 0.92 m) están dentro de la variabilidad esperable. Las
+conclusiones firmes son las tendencias: ganancias altas → más slip.
 
 ---
 
 ## Elección del tune final
 
-**`lookahead_distance = 0.15`, `kp_xy = 0.8`, `kp_yaw = 1.5`.**
+**`kp_xy = 0.8`, `kp_yaw = 0.75`** (lookahead 0.30 m).
 
-- Junto con la combinación, es el mejor resultado del barrido (drift_fin
-  0.84 m, drift_med 0.56 m, el más bajo de todos).
-- Cambia un solo parámetro respecto de los defaults, y no depende de la
-  mejora marginal de `kp_yaw = 0.75`.
-- El costo es el tiempo: la vuelta tarda aproximadamente el doble que con
-  `lookahead = 0.30`.
+- Mejor seguimiento angular del barrido y mejor drift_fin, sin perder
+  seguimiento en posición.
+- `kp_xy = 0.8` es el punto medio: subirlo multiplica el slip, bajarlo no
+  mejora el drift y duplica el tiempo.
+- Quedan como defaults de `lazo_cerrado.launch.py` y `seguimiento_odom.launch.py`.
 
-El drift resultante es ~0.8 m sobre 16 m de recorrido (~5%), dentro de lo que
+El drift resultante es ~0.9 m sobre 16 m de recorrido (~5.5%), dentro de lo que
 se reporta para plataformas Mecanum con odometría pura (5-15%). Es la cota de
 precisión de la odometría por encoders y motiva el módulo 3 (EKF con
 landmarks).
@@ -149,13 +154,14 @@ landmarks).
 
 | # | Ruta | Contenido |
 |---|---|---|
-| 1 | Grilla con los 8 `experiments/2026-11-22-cuadrado_cardinal_*/plots/xy_path.png` | Efecto de cada palanca sobre la trayectoria real |
-| 2 | `experiments/2026-11-22-cuadrado_cardinal_lookahead015/plots/goal_pose_vs_pose.png` | Tune elegido: pose vs setpoint en el tiempo |
-| 3 | `experiments/2026-11-22-cuadrado_cardinal_lookahead015/plots/body_velocity.png` | Tune elegido: `vx`, `vy`, `wz` comandados |
-| 4 | `experiments/2026-11-22-cuadrado_cardinal_lookahead015/plots/tracking_error.png` | Tune elegido: error de seguimiento en el tiempo |
+| 1 | Grilla con los 5 `experiments/2026-11-22-cuadrado_cardinal_*/plots/xy_path.png` | Efecto de cada ganancia sobre la trayectoria real |
+| 2 | `experiments/2026-11-22-cuadrado_cardinal_kpyaw075/plots/goal_pose_vs_pose.png` | Tune elegido: pose vs setpoint en el tiempo |
+| 3 | `experiments/2026-11-22-cuadrado_cardinal_kpyaw075/plots/body_velocity.png` | Tune elegido: `vx`, `vy`, `wz` comandados |
+| 4 | `experiments/2026-11-22-cuadrado_cardinal_kpyaw075/plots/tracking_error.png` y `yaw_error.png` | Tune elegido: error de seguimiento en el tiempo |
 | 5 | `experiments/2026-11-22-cuadrado_cardinal_kpxy16/plots/xy_path.png` | Caso patológico: velocidad alta |
 
 La figura 1 no existe como un único PNG: hay que armarla con `subfigure` en el
 TeX o con un script.
 
-Los bags de estas corridas están en el release de GitHub `bags-m2-cardinal`.
+Los bags de estas corridas están en el release de GitHub `bags-m2-cardinal`
+(ese release también contiene las corridas de lookahead, descartadas del repo).

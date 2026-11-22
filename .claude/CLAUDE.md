@@ -28,7 +28,7 @@ The TP demands **three ROS 2 nodes** in addition to the message package and URDF
    - Clase base `robmovil::HolonomicTrajectoryFollower` (`src/HolonomicTrajectoryFollower.{h,cpp}`): timer de control a 30 Hz, publica `/robot/cmd_vel`, suscribe `/robot/trajectory`.
    - Derivada `robmovil::KinematicHolonomicController` (`src/KinematicHolonomicController.{h,cpp}`): ley P por GDL en frame body, feedback por TF `map → base_link`. Modos: `FIXED` (goal único, para sanity) y `PURSUIT` (cursor monotónico sobre waypoints con lookahead). Sin pre-alineación (se probó y se sacó: no aportaba con la convención de yaw actual).
    - Nodo `trajectory_generator` (`src/trajectory_generator_node.cpp`): publica una `robmovil_msgs/Trajectory` del cuadrado `(±square_half_side, ±square_half_side)` CCW desde `(-s, +s)` (donde spawnea el robot). Yaw "cardinal", fiel a la figura de la consigna (p. 6): 90° / 180° / 270° / 360° en los vértices `(-s,+s)`, `(-s,-s)`, `(+s,-s)`, `(+s,+s)`, interpolado linealmente en cada lado. **No** usa `atan2(y, x)`: esa variante (offset de +45°) se probó y daba ~20% más drift.
-   - Tune elegido del barrido cardinal: `lookahead_distance=0.15` (con `kp_xy=0.8`, `kp_yaw` 1.5 o 0.75). Ver `docs/02b_experimentos_informe_draft.md`.
+   - Tune elegido del barrido cardinal: `kp_xy=0.8`, `kp_yaw=0.75` (defaults de los launchers), `lookahead_distance=0.30`. El lookahead no se barre: la consigna sólo pide variar las constantes P. Ver `docs/02b_experimentos_informe_draft.md`.
    - Launchers: `launch/lazo_cerrado.launch.py` (controller + generator) y `launch/seguimiento_odom.launch.py` (combo con odometría del módulo 1 en un solo proceso).
    - Deep dive: `docs/02_lazo_cerrado.md`.
 3. **Localización basada en EKF** (`robmovil_ekf/` + `kfilter/`, **implemented**)
@@ -125,7 +125,7 @@ Los launch files del TP usan el patrón **`DeclareLaunchArgument` + `LaunchConfi
 
 **Por qué este patrón y no el "hardcoded inline"** (que usan los launchers pedagógicos viejos como `lazo_abierto_diferencial/launch/lazo_abierto.launch.py` o `lazo_cerrado_diferencial/launch/lazo_cerrado.launch.py`): la consigna pide barridos experimentales (variar `kp_xy`, `kp_yaw`, etc. al menos 3 veces cada uno). Con el patrón declarativo el barrido es una línea de comandos por corrida:
 ```bash
-ros2 launch lazo_cerrado lazo_cerrado.launch.py kp_xy:=0.8 kp_yaw:=1.5
+ros2 launch lazo_cerrado lazo_cerrado.launch.py kp_xy:=0.8 kp_yaw:=0.75
 ```
 sin editar el `.py` ni rebuildear. Bonus: `--show-args` documenta los args desde el propio launcher.
 

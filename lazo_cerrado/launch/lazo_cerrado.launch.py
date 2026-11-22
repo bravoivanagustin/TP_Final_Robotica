@@ -56,8 +56,8 @@ def generate_launch_description():
         # Ganancias, saturaciones, tolerancias.
         DeclareLaunchArgument('kp_xy', default_value='0.8',
                               description='Ganancia P de traslación (frame body).'),
-        DeclareLaunchArgument('kp_yaw', default_value='1.5',
-                              description='Ganancia P de orientación.'),
+        DeclareLaunchArgument('kp_yaw', default_value='0.75',
+                              description='Ganancia P de orientación (0.75: tune elegido, docs/02b).'),
         DeclareLaunchArgument('lookahead_distance', default_value='0.30',
                               description='Distancia [m] mínima del waypoint perseguido al robot.'),
         DeclareLaunchArgument('position_tolerance', default_value='0.05',

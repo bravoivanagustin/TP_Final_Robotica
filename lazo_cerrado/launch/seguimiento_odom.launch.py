@@ -48,7 +48,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'kp_yaw',
-            default_value='1.5',
+            default_value='0.75',
             description='Ganancia P de orientacion del controlador.'
         ),
         DeclareLaunchArgument(
