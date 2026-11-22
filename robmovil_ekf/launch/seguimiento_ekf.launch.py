@@ -1,21 +1,13 @@
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
     return LaunchDescription([
 
-        # map -> odom (identidad): el robot arranca en el origen del frame map
-        Node(
-            package="tf2_ros",
-            executable="static_transform_publisher",
-            name="map_to_odom",
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
-            parameters=[{"use_sim_time": True}]
-        ),
+        # map -> odom lo publica el simulador (pose de spawn), no se publica aca
 
         # Modelo cinematico: /robot/odometry y TF odom -> base_link
         IncludeLaunchDescription(

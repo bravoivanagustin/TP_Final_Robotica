@@ -45,8 +45,8 @@ robmovil_ekf::Localizer::Localizer() :
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
-  /* /posts lo publica el simulador una sola vez: hace falta transient_local para recibirlo */
-  posts_sub = this->create_subscription<geometry_msgs::msg::PoseArray>( "/posts", rclcpp::QoS(1).reliable().transient_local(), std::bind(&Localizer::on_posts, this, std::placeholders::_1));
+  /* el sim publica /posts una sola vez al dar play y como volatile: levantar el nodo antes del play */
+  posts_sub = this->create_subscription<geometry_msgs::msg::PoseArray>( "/posts", rclcpp::QoS(1).reliable().durability_volatile(), std::bind(&Localizer::on_posts, this, std::placeholders::_1));
   landmark_sub = this->create_subscription<robmovil_msgs::msg::LandmarkArray>( "/landmarks", rclcpp::QoS(10), std::bind(&Localizer::on_landmark_array, this, std::placeholders::_1));
   odo_sub = this->create_subscription<nav_msgs::msg::Odometry>( "/robot/odometry", rclcpp::QoS(10), std::bind(&Localizer::on_odometry, this, std::placeholders::_1));
 
