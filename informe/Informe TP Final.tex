@@ -357,9 +357,9 @@ De esta forma, el robot persigue un punto que siempre se encuentra por delante, 
 
 
 \subsection{Experimentos}
-Para elegir las constantes del controlador, se realizaron corridas en las que el robot sigue la trayectoria cuadrada completa, utilizando la odometría como retroalimentación. Se probaron tres valores de $k_{p,xy}$, tres de $k_{p,yaw}$ y tres de \emph{lookahead}, variando un parámetro a la vez y dejando los otros fijos. El \emph{lookahead} se incluyó porque, si bien no es una constante del controlador, también influye en la velocidad del robot. Además, se probó una combinación del menor $k_{p,yaw}$ con el menor \emph{lookahead}. De cada configuración se realizó una sola corrida.
+Para elegir las constantes del controlador, se realizaron corridas en las que el robot sigue la trayectoria cuadrada completa, utilizando la odometría como retroalimentación y un \emph{lookahead} de $0.30$~m. Se probaron tres valores de $k_{p,xy}$ y tres de $k_{p,yaw}$, variando una constante a la vez y dejando la otra fija, y de cada configuración se realizó una sola corrida.
 
-En la Tabla~\ref{tab:barrido} se resumen los resultados, donde $d$ es la distancia del robot real al cuadrado, $e_p$ y $e_\theta$ son los errores de posición y de orientación del robot real respecto del último punto de la trayectoria, y $\bar{e}_{\theta,odom}$ es el promedio del error de orientación que ve el controlador, es decir, el que se calcula con la odometría. La duración se mide en tiempo de simulación, desde el primer comando hasta que el controlador da por terminada la trayectoria.
+En la Tabla~\ref{tab:barrido} se resumen los resultados, donde $d$ es la distancia del robot real al cuadrado, y $e_p$ y $e_\theta$ son los errores de posición y de orientación del robot real respecto del último punto de la trayectoria. Además, se incluye el error de orientación que ve el controlador, es decir, el que se calcula con la odometría, medido de dos formas. La primera, $\bar{e}_{\theta,obj}$, es el promedio del error respecto de la orientación objetivo, que es la que utiliza la ley de control, y la segunda, $\bar{e}_{\theta,tray}$, es el promedio del error respecto de la orientación que corresponde al punto de la trayectoria más cercano al robot. La duración se mide en tiempo de simulación, desde el primer comando hasta que el controlador da por terminada la trayectoria.
 
 \begin{table}[h]
 \centering
@@ -367,30 +367,26 @@ En la Tabla~\ref{tab:barrido} se resumen los resultados, donde $d$ es la distanc
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{ccccccccc}
 \toprule
-$k_{p,xy}$ & $k_{p,yaw}$ & \emph{lookahead} [m] & Duración [s] & $d$ medio [m] & $d$ máx. [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{\theta,odom}$ \\
+$k_{p,xy}$ & $k_{p,yaw}$ & Duración [s] & $d$ medio [m] & $d$ máx. [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{\theta,obj}$ & $\bar{e}_{\theta,tray}$ \\
 \midrule
-$0.4$ & $1.5$ & $0.30$ & $123$ & $0.20$ & $0.54$ & $0.90$ & $19.9^\circ$ & $1.9^\circ$ \\
-$0.8$ & $1.5$ & $0.30$ & $64$ & $0.22$ & $0.56$ & $0.90$ & $20.8^\circ$ & $3.8^\circ$ \\
-$1.6$ & $1.5$ & $0.30$ & $38$ & $0.42$ & $1.13$ & $2.12$ & $49.4^\circ$ & $7.0^\circ$ \\
+$0.4$ & $1.5$ & $123$ & $0.20$ & $0.54$ & $0.90$ & $19.9^\circ$ & $1.9^\circ$ & $5.3^\circ$ \\
+$0.8$ & $1.5$ & $64$ & $0.22$ & $0.56$ & $0.90$ & $20.8^\circ$ & $3.8^\circ$ & $3.4^\circ$ \\
+$1.6$ & $1.5$ & $38$ & $0.42$ & $1.13$ & $2.12$ & $49.4^\circ$ & $7.0^\circ$ & $1.4^\circ$ \\
 \midrule
-$0.8$ & $0.75$ & $0.30$ & $65$ & $0.22$ & $0.55$ & $0.88$ & $19.5^\circ$ & $7.7^\circ$ \\
-$0.8$ & $3.0$ & $0.30$ & $65$ & $0.23$ & $0.59$ & $1.00$ & $22.9^\circ$ & $1.8^\circ$ \\
-\midrule
-$0.8$ & $1.5$ & $0.15$ & $116$ & $0.18$ & $0.52$ & $0.82$ & $18.2^\circ$ & $2.1^\circ$ \\
-$0.8$ & $1.5$ & $0.60$ & $39$ & $0.41$ & $1.03$ & $2.18$ & $50.0^\circ$ & $6.7^\circ$ \\
-$0.8$ & $0.75$ & $0.15$ & $115$ & $0.18$ & $0.50$ & $0.79$ & $16.8^\circ$ & $4.2^\circ$ \\
+$0.8$ & $0.75$ & $65$ & $0.22$ & $0.55$ & $0.88$ & $19.5^\circ$ & $7.7^\circ$ & $0.7^\circ$ \\
+$0.8$ & $3.0$ & $65$ & $0.23$ & $0.59$ & $1.00$ & $22.9^\circ$ & $1.8^\circ$ & $5.3^\circ$ \\
 \bottomrule
 \end{tabular}
 \caption{Resultados de las corridas con distintas constantes.}
 \label{tab:barrido}
 \end{table}
 
-En todas las corridas la trayectoria estimada sigue al cuadrado y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada (Figura~\ref{fig:lazo_tray}). Esto se debe a que el controlador corrige el error respecto de la pose estimada, de manera que no puede detectar el error propio de la odometría que se vio en la Sección~2.4. A su vez, la trayectoria estimada recorta las esquinas, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice. Este recorte es mayor cuanto mayor es el \emph{lookahead}, pasando de un máximo de $0.07$~m con el menor de los tres a $0.26$~m con el mayor.
+En todas las corridas la trayectoria estimada sigue al cuadrado y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada (Figura~\ref{fig:lazo_tray}). Esto se debe a que el controlador corrige el error respecto de la pose estimada, de manera que no puede detectar el error propio de la odometría que se vio en la Sección~2.4. A su vez, la trayectoria estimada recorta las esquinas hasta $0.14$~m, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\textwidth]{figuras/lazo_trayectorias.pdf}
-\caption{Trayectoria deseada, estimada por la odometría y real. En la corrida con \emph{lookahead} de $0.15$~m, $k_{p,xy} = 0.8$ y $k_{p,yaw} = 1.5$.}
+\caption{Trayectoria deseada, estimada por la odometría y real.}
 \label{fig:lazo_tray}
 \end{figure}
 
@@ -401,7 +397,7 @@ La pose objetivo, la estimada y la real para los tres valores de $k_{p,xy}$ se p
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\textwidth]{figuras/lazo_kpxy.pdf}
-\caption{Pose objetivo, estimada por la odometría y real para distintos valores de $k_{p,xy}$, con \emph{lookahead} de $0.30$~m.}
+\caption{Pose objetivo, estimada por la odometría y real para distintos valores de $k_{p,xy}$.}
 \label{fig:lazo_kpxy}
 \end{figure}
 
@@ -414,26 +410,15 @@ Para los tres valores de $k_{p,yaw}$, los resultados se presentan en la Figura~\
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.95\textwidth]{figuras/lazo_kpyaw.pdf}
-\caption{Pose objetivo, estimada por la odometría y real para distintos valores de $k_{p,yaw}$, con \emph{lookahead} de $0.30$~m.}
+\caption{Pose objetivo, estimada por la odometría y real para distintos valores de $k_{p,yaw}$.}
 \label{fig:lazo_kpyaw}
 \end{figure}
 
 La orientación objetivo cambia a lo largo de todo el recorrido, de manera que el robot siempre la sigue con un retraso. Según la ley de control~\eqref{eq:ley_control}, para que el robot gire a una velocidad $\omega_z$ tiene que haber un error $e_\theta = \omega_z / k_{p,yaw}$, es decir, el retraso se reduce a la mitad al duplicar la constante. La velocidad angular promedio de estas corridas es de $0.105$~rad/s, por lo que el error debería ser de unos $8.0^\circ$ con $k_{p,yaw} = 0.75$, $4.0^\circ$ con $1.5$ y $2.0^\circ$ con $3.0$, y los valores obtenidos fueron de $7.7^\circ$, $3.8^\circ$ y $1.8^\circ$. La duración no cambia, ya que depende de la velocidad lineal.
 
-Si bien al aumentar $k_{p,yaw}$ el controlador sigue mejor la orientación, esto no mejora el resultado del robot real. El error es prácticamente el mismo con $0.75$ y con $1.5$, y con $3.0$ es algo mayor, dado que el error final de posición llega a $1.00$~m y el de orientación a $22.9^\circ$.
+Sin embargo, que el robot siga de cerca a la orientación objetivo no significa que esté bien orientado para el lugar en el que se encuentra, ya que el objetivo está $0.30$~m más adelante sobre la trayectoria. Como la orientación gira $90^\circ$ en cada lado de $4$~m, en esos $0.30$~m ya giró unos $6.75^\circ$, es decir, la orientación objetivo va adelantada respecto de la que corresponde a la posición del robot. Con $k_{p,yaw} = 0.75$ el retraso de $7.7^\circ$ casi compensa este adelanto, de manera que el error respecto de la trayectoria es de solo $0.7^\circ$. Con las otras dos constantes, en cambio, el robot gira de más y queda adelantado, con un error de $3.4^\circ$ para $1.5$ y de $5.3^\circ$ para $3.0$.
 
-\subsubsection{Variación del \emph{lookahead}}
-
-Los resultados para los tres valores de \emph{lookahead} se presentan en la Figura~\ref{fig:lazo_lookahead}.
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\textwidth]{figuras/lazo_lookahead.pdf}
-\caption{Pose objetivo, estimada por la odometría y real para distintos valores de \emph{lookahead}, con $k_{p,xy} = 0.8$ y $k_{p,yaw} = 1.5$.}
-\label{fig:lazo_lookahead}
-\end{figure}
-
-Cambiar el \emph{lookahead} tiene un efecto parecido al de cambiar $k_{p,xy}$, porque al cambiar la distancia al objetivo también cambia la velocidad. Con $0.15$~m la velocidad comandada promedio es de $0.14$~m/s, similar a la que se obtiene con $k_{p,xy} = 0.4$, y con $0.60$~m es de $0.48$~m/s, similar a la de $k_{p,xy} = 1.6$. La diferencia es que, además, con un \emph{lookahead} menor el robot recorta menos las esquinas. Con $0.15$~m, el error final de posición baja a $0.82$~m y el de orientación a $18.2^\circ$.
+En el robot real, el error es prácticamente el mismo con $0.75$ y con $1.5$, y con $3.0$ es algo mayor, dado que el error final de posición llega a $1.00$~m y el de orientación a $22.9^\circ$.
 
 \subsubsection{Velocidades asignadas}
 
@@ -442,7 +427,7 @@ Las velocidades que asignó el controlador en cada momento se presentan en la Fi
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figuras/lazo_velocidades.pdf}
-\caption{Velocidades asignadas por el controlador para distintos valores de las constantes. En la última columna, $k_{p,xy} = 0.8$ y $k_{p,yaw} = 1.5$.}
+\caption{Velocidades asignadas por el controlador para distintos valores de las constantes.}
 \label{fig:lazo_vel}
 \end{figure}
 
@@ -452,7 +437,7 @@ Además, las velocidades presentan una oscilación rápida, que se debe a que el
 
 \subsubsection{Elección de las constantes}
 
-Se eligieron $k_{p,xy} = 0.8$, $k_{p,yaw} = 1.5$ y un \emph{lookahead} de $0.15$~m, ya que es una de las dos configuraciones con menor error del robot real. La otra es la combinación con $k_{p,yaw} = 0.75$, que tuvo un error final algo menor, pero la diferencia es chica y solo se realizó una corrida de cada una. Entre las dos se eligió $k_{p,yaw} = 1.5$, dado que el error de orientación que ve el controlador es la mitad. Por el otro lado, la desventaja de esta elección es que el recorrido tarda casi el doble que con un \emph{lookahead} de $0.30$~m. Si bien con $k_{p,xy} = 0.4$ la duración es similar, el error final es mayor y se recortan más las esquinas.
+Se eligieron $k_{p,xy} = 0.8$ y $k_{p,yaw} = 0.75$, con un \emph{lookahead} de $0.30$~m. Con estas constantes el robot real obtuvo el menor error final de posición, si bien las diferencias con las demás corridas a la misma velocidad son chicas y solo se realizó una corrida de cada configuración. Lo que define la elección es que, como se vio, con $k_{p,yaw} = 0.75$ el robot se mantiene orientado según el punto de la trayectoria en el que se encuentra, con un error medio de $0.7^\circ$. Por el otro lado, se mantuvo $k_{p,xy} = 0.8$, dado que con $0.4$ el recorrido tarda casi el doble sin que el error mejore, y con $1.6$ el error final se duplica.
 
 El error que queda no puede corregirse ajustando las constantes, ya que el controlador sigue correctamente a la pose estimada y es esta última la que se aparta de la real. Para reducirlo es necesario mejorar la estimación de la pose, para lo que se utiliza el EKF de la Sección~\ref{sec:ekf}.
 
@@ -474,6 +459,8 @@ De cada grupo, se promedian los puntos para calcular el centroide, y se lo expre
 \begin{equation}
 r = \sqrt{c_x^2 + c_y^2}, \qquad \varphi = \mathrm{atan2}(c_y, c_x)
 \end{equation}
+
+Sin embargo, el láser solo alcanza la cara del poste que queda frente al robot, por lo que los puntos de cada grupo están sobre esa cara y su centroide no coincide con el centro del poste, sino que queda más cerca del robot. Si los rayos caen de manera aproximadamente uniforme a lo ancho del poste, la distancia media de los puntos al plano que pasa por el centro es $\pi r_p/4$, siendo $r_p$ el radio del poste, de manera que el centroide queda a esa distancia del centro, que para los postes de $5$~cm de radio es de unos $3.9$~cm. Por eso, antes de calcular $r$ y $\varphi$, el centroide se corre esa distancia en la dirección que va del láser al poste. Comparando las observaciones con las que se obtendrían desde la pose real, el error medio del rango pasó de $-3.9$~cm a menos de $1$~mm con esta corrección.
 
 Las observaciones de los landmarks se publican en \texttt{/landmarks} como un mensaje \texttt{robmovil\_msgs/LandmarkArray}, en el marco del robot y con la marca del escaneo del cual provienen. Además, en \texttt{/landmark\_markers} se publican marcadores de cada poste para poder visualizarlos en RViz2.
 
@@ -543,30 +530,30 @@ El filtro requiere tres matrices de covarianza: $Q$ para el ruido de la predicci
 
 \paragraph{Ruido de proceso.}
 \begin{equation}
-Q = \mathrm{diag}(\sigma_x^2,\ \sigma_y^2,\ \sigma_\theta^2) = \mathrm{diag}(0.15^2,\ 0.15^2,\ 0.15^2)
+Q = \mathrm{diag}(\sigma_x^2,\ \sigma_y^2,\ \sigma_\theta^2) = \mathrm{diag}(0.02^2,\ 0.02^2,\ 0.01^2)
 \end{equation}
-con $\sigma_x$ y $\sigma_y$ en metros y $\sigma_\theta$ en radianes. La matriz $Q$ se suma en cada paso de predicción, sin escalarla por $\Delta t$. Como se hace un paso de predicción por cada mensaje de odometría, y entre dos mensajes el robot se mueve muy poco, estos valores son bastante mayores que el error real de la odometría en un paso. Sobreestimar el error de la odometría tiene sentido porque las ruedas Mecanum patinan y ese error se acumula con cada paso. 
+con $\sigma_x$ y $\sigma_y$ en metros y $\sigma_\theta$ en radianes. La matriz $Q$ se suma en cada paso de predicción sin escalarla por $\Delta t$, y como la odometría se publica cada $0.05$~s, equivale a una incertidumbre que crece con el tiempo, aunque el robot esté quieto. Por ejemplo, si durante un segundo el robot no ve ningún poste, se suma $Q$ veinte veces y el desvío en cada coordenada llega a unos $0.02\sqrt{20} \approx 9$~cm. Si bien estos valores son mayores que el error real de la odometría en un paso, que en las corridas del cuadrado fue menor a $1$~mm, de esta forma el filtro considera más confiable la medición, como pide la consigna.
 
 \paragraph{Ruido de medición.}
 \begin{equation}
-R = \mathrm{diag}(\sigma_r^2,\ \sigma_\varphi^2) = \mathrm{diag}(0.05^2,\ 0.03^2)
+R = \mathrm{diag}(\sigma_r^2,\ \sigma_\varphi^2) = \mathrm{diag}(0.01^2,\ 0.005^2)
 \end{equation}
-con $\sigma_r$ en metros y $\sigma_\varphi$ en radianes ($0.03$~rad $\approx 1.7^\circ$). El láser solo observa la cara del poste que queda frente al robot, por lo que el centroide del cluster no coincide con el centro del poste, sino que queda sobre esa cara. Por eso, la distancia medida puede ser algo menor que la real, en hasta el radio del poste ($5$~cm), que es del mismo orden que $\sigma_r$. 
+con $\sigma_r$ en metros y $\sigma_\varphi$ en radianes ($0.005$~rad $\approx 0.3^\circ$). Para elegirlos, se comparó cada observación del detector con la que debería haberse medido desde la pose real del robot. El desvío fue de unos $2$ a $3$~mm en el rango y de $0.0014$ a $0.0026$~rad en el ángulo, es decir, el láser del simulador mide con mucha precisión, y los valores de $R$ se tomaron algo mayores para dejar un margen.
 
 \paragraph{Relación entre $Q$ y $R$.}
-Si bien $Q$ describe errores en la pose del robot y $R$ errores en la medición, se pueden comparar porque unos se trasladan casi directamente a los otros. Si el robot está desplazado una cierta distancia en la dirección del poste, el rango medido cambia esa misma distancia, ya que la primera fila de $J_h$ es un vector unitario en esa dirección, y si el robot está girado un cierto ángulo, el ángulo medido cambia lo mismo pero con signo opuesto, debido al $-1$ de la segunda fila de $J_h$. Comparando las varianzas, la de la predicción es $0.15^2/0.05^2 = 9$ veces la de la medición en posición, y $0.15^2/0.03^2 = 25$ veces en ángulo.
+Si bien $Q$ describe errores en la pose del robot y $R$ errores en la medición, se pueden comparar porque unos se trasladan casi directamente a los otros. Si el robot está desplazado una cierta distancia en la dirección del poste, el rango medido cambia esa misma distancia, ya que la primera fila de $J_h$ es un vector unitario en esa dirección, y si el robot está girado un cierto ángulo, el ángulo medido cambia lo mismo pero con signo opuesto, debido al $-1$ de la segunda fila de $J_h$. Comparando las varianzas, la de la predicción es $0.02^2/0.01^2 = 4$ veces la de la medición, tanto en posición como en ángulo, ya que $0.01^2/0.005^2$ también es $4$.
 
 Esta relación determina cuánto se corrige la pose con cada observación. En el filtro, $P$ y $R$ son matrices, porque la pose tiene tres componentes y la medición dos. Sin embargo, la idea es más fácil de ver si se simplifica el problema a una sola variable, por ejemplo, solo la distancia al poste. En ese caso las matrices se reducen a una sola varianza cada una, y la ganancia de Kalman $K$ queda
 \begin{equation}
 K = \frac{P^-}{P^- + R}
 \end{equation}
-siendo $P^-$ la incertidumbre de la pose predicha y $R$ la de la medición. La pose corregida es $x^+ = x^- + K\,(z - h(x^-))$, es decir, la predicción sumada a una fracción $K$ de la diferencia entre la medición y la medición esperada. Si $P^-$ resulta mucho mayor que $R$, $K$ se acerca a 1 y la pose corregida queda casi donde indica la medición. Por el otro lado, si $P^-$ es mucho menor que $R$, $K$ se acerca a 0 y la medición casi no modifica la predicción. En cada paso de la predicción, se suma $Q$ a la covarianza, por lo que $P^-$ es al menos del tamaño de $Q$. Con los valores elegidos, si $P^- \approx 0.15^2$ y $R = 0.05^2$, resulta $K \approx 0.9$, lo que indica que la corrección lleva la estimación el $90\%$ del camino hacia la medición. De esta forma, en la corrección se considera más confiable la información del láser que la odometría, como se pedía en la consigna. 
+siendo $P^-$ la incertidumbre de la pose predicha y $R$ la de la medición. La pose corregida es $x^+ = x^- + K\,(z - h(x^-))$, es decir, la predicción sumada a una fracción $K$ de la diferencia entre la medición y la medición esperada. Si $P^-$ resulta mucho mayor que $R$, $K$ se acerca a 1 y la pose corregida queda casi donde indica la medición. Por el otro lado, si $P^-$ es mucho menor que $R$, $K$ se acerca a 0 y la medición casi no modifica la predicción. En cada paso de la predicción, se suma $Q$ a la covarianza, por lo que $P^-$ es al menos del tamaño de $Q$. Con los valores elegidos, si $P^- \approx 0.02^2$ y $R = 0.01^2$, resulta $K = 0.8$, lo que indica que la corrección lleva la estimación el $80\%$ del camino hacia la medición. De esta forma, en la corrección se considera más confiable la información del láser que la odometría, como se pedía en la consigna. 
 
 \paragraph{Covarianza inicial.}
 \begin{equation}
 P_0 = 0.01 \cdot I_3 = \mathrm{diag}(0.1^2,\ 0.1^2,\ 0.1^2)
 \end{equation}
-Es decir, al comenzar se supone un desvío de $0.1$~m en cada coordenada y de $0.1$~rad ($\approx 5.7^\circ$) en la orientación. La pose inicial del filtro proviene de la transformación \texttt{map} $\rightarrow$ \texttt{base\_link}. Si el filtro arranca antes de que el robot se mueva, la odometría todavía no acumuló error, y por eso la incertidumbre inicial se eligió chica. Además, este valor influye poco. Con el robot casi quieto, luego de la primera predicción cada varianza pasa de $0.01$ a $0.01 + 0.15^2 \approx 0.03$, y la mayor parte proviene de $Q$.
+Es decir, al comenzar se supone un desvío de $0.1$~m en cada coordenada y de $0.1$~rad ($\approx 5.7^\circ$) en la orientación. La pose inicial del filtro proviene de la transformación \texttt{map} $\rightarrow$ \texttt{base\_link}. Si el filtro arranca antes de que el robot se mueva, la odometría todavía no acumuló error, y por eso la incertidumbre inicial se eligió chica. Además, este valor influye poco, ya que en cuanto el filtro ve los primeros postes la incertidumbre baja a valores del orden de $1$~cm.
 
 \subsection{Nodo EKF y asociación de datos}
 
@@ -615,22 +602,103 @@ Si bien estas son las ecuaciones del filtro, la clase \texttt{EKFilter} no las c
 \paragraph{Salidas.} Luego de cada predicción o corrección, el nodo publica la pose estimada como la transformación \texttt{map} $\rightarrow$ \texttt{base\_link\_ekf} y como un mensaje \texttt{nav\_msgs/Odometry} en \texttt{/robot/odometry\_ekf}, que incluye la covarianza $P$ del estado.
 
 \subsection{Experimentos}
-\begin{tareas}
-    \item \TODO{Mover el robot manualmente con velocidades constantes (sin control de trayectoria) y registrar la pose a lo largo del tiempo.}
-    \item \TODO{Comparar: pose EKF vs. pose por odometría pura vs. pose real (ground truth). Gráfico de trayectorias superpuestas y/o error en el tiempo.}
-    \item \TODO{Cuantificar la mejora (o no) de precisión del EKF respecto a la odometría sola.}
-    \item \TODO{Este experimento todavía no fue corrido/documentado -- pendiente antes de la entrega.}
-\end{tareas}
+Para evaluar la localización, se movió al robot con velocidades constantes y sin el controlador, publicando $v_x = 0.2$~m/s y $\omega_z = -0.133$~rad/s durante $95$~s, de manera que describa dos vueltas de una circunferencia de $1.5$~m de radio. Durante el recorrido se registraron la pose estimada por el EKF, la estimada solo con la odometría y la pose real.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras/ekf_circulo_tray.pdf}
+\caption{Trayectoria real y estimadas por la odometría y por el EKF, con velocidades constantes.}
+\label{fig:ekf_circulo_tray}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Error} & \textbf{EKF} & \textbf{Odometría} \\
+\midrule
+Posición medio [cm] & $1.2$ & $11.3$ \\
+Posición máximo [cm] & $4.2$ & $22.4$ \\
+Posición final [cm] & $0.4$ & $21.2$ \\
+Orientación final & $0.1^\circ$ & $6.1^\circ$ \\
+\bottomrule
+\end{tabular}
+\caption{Errores de la pose estimada por el EKF y por la odometría, con velocidades constantes.}
+\label{tab:ekf_circulo}
+\end{table}
+
+La trayectoria estimada por el EKF se mantiene sobre la real durante todo el recorrido, mientras que la de la odometría se va separando de ella (Figura~\ref{fig:ekf_circulo_tray}). En la Figura~\ref{fig:ekf_circulo_error} y en la Tabla~\ref{tab:ekf_circulo} se ve que el error de la odometría crece con el tiempo, hasta llegar a $21$~cm y $6.1^\circ$ al final, mientras que el del EKF se mantiene en el orden de $1$~cm, ya que cada vez que el láser detecta postes la estimación se corrige.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/ekf_circulo_error.pdf}
+\caption{Errores de posición y de orientación de la odometría y del EKF, y desvío de la posición que estima el EKF.}
+\label{fig:ekf_circulo_error}
+\end{figure}
+
+La única excepción son dos tramos de unos $5$~s, uno en cada vuelta, en los que el láser no ve ningún poste. En ellos el filtro solo predice, de manera que su error crece igual que el de la odometría, hasta unos $4$~cm, y la incertidumbre que estima crece todavía más, hasta $34$~cm, porque $Q$ se suma en cada paso. Cuando el láser vuelve a ver postes la estimación se corrige, y tanto el error como la incertidumbre bajan de golpe. Esto muestra que lo que mejora la estimación no es el filtro por sí mismo, sino las observaciones de los postes.
+
+Con postes a la vista, la incertidumbre oscila entre $1$ y $5$~cm, ya que crece con cada predicción y baja con cada corrección. Además, durante todo el recorrido el error real del EKF se mantuvo por debajo de dos veces el desvío que estima el filtro, en las tres componentes de la pose, es decir, la incertidumbre que informa el filtro es mayor que su error real. Esto es lo que se espera al elegir $Q$ mayor que el error de la odometría en un paso.
+
+En la Figura~\ref{fig:ekf_circulo_rviz} se muestra la elipse de covarianza de la posición en RViz2 a lo largo del recorrido, ampliada diez veces para que sea visible. Las elipses más grandes corresponden al tramo en el que el láser no ve postes.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{figuras/ekf_circulo_rviz.png}
+\caption{Elipse de covarianza del EKF en RViz2 durante la circunferencia, ampliada diez veces. Los puntos verdes son los postes que detecta el láser en ese instante.}
+\label{fig:ekf_circulo_rviz}
+\end{figure}
 
 % =====================================================================
 \section{Seguimiento de trayectorias a lazo cerrado utilizando localización basada en EKF}
-\begin{tareas}
-    \item \TODO{Explicar la integración: el \texttt{trajectory\_follower} pasa a usar como feedback la transformación \texttt{map→base\_link\_ekf} en lugar de \texttt{map→base\_link} (parámetro \texttt{base\_frame}).}
-    \item \TODO{Presentar el comportamiento del sistema completo (seguimiento + localización EKF) siguiendo la trayectoria cuadrada de 4 m.}
-    \item \TODO{Si fue necesario reajustar $k_{p,xy}$/$k_{p,yaw}$ para este caso, documentar los experimentos de reajuste y la justificación.}
-    \item \TODO{Análisis comparativo: trayectoria efectivamente realizada por el robot vs. trayectoria requerida vs. ground truth.}
-    \item \TODO{Capturas de RViz2 mostrando el elipsoide de covarianza del EKF en distintas porciones del recorrido (al menos en un tramo recto y en un vértice/giro).}
-\end{tareas}
+Para seguir la trayectoria utilizando la estimación del EKF no fue necesario modificar el controlador. Como el controlador obtiene la pose del robot de la transformación \texttt{map} $\rightarrow$ \texttt{base\_frame}, alcanza con cambiar el parámetro \texttt{base\_frame} de \texttt{base\_link} a \texttt{base\_link\_ekf}, de manera que la retroalimentación pasa a ser la pose que publica el EKF. Se utilizaron las constantes elegidas en la Sección~3.3, y no fue necesario volver a ajustarlas.
+
+Para evaluar el sistema completo, se comparó una corrida con el EKF en el lazo con otra en la que el lazo se cierra con la odometría. En esta última, el EKF también estima la pose, pero el controlador no la utiliza. Las dos corridas siguen la misma trayectoria con las mismas constantes, por lo que la única diferencia es la pose que recibe el controlador.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/ekf_cuadrado_tray.pdf}
+\caption{Trayectoria deseada, estimada y real, con la odometría y con el EKF como retroalimentación.}
+\label{fig:ekf_cuadrado_tray}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Robot real} & \textbf{Con EKF} & \textbf{Con odometría} \\
+\midrule
+Distancia al cuadrado, media [cm] & $1.6$ & $21.5$ \\
+Distancia al cuadrado, máxima [cm] & $14.3$ & $54.1$ \\
+Error de orientación, medio & $0.5^\circ$ & $4.2^\circ$ \\
+Error de orientación, máximo & $3.4^\circ$ & $22.3^\circ$ \\
+Error final de posición [cm] & $5.1$ & $83.8$ \\
+Error final de orientación & $1.0^\circ$ & $18.1^\circ$ \\
+\bottomrule
+\end{tabular}
+\caption{Errores del robot real respecto de la trayectoria deseada, según la pose que utiliza el controlador.}
+\label{tab:ekf_cuadrado}
+\end{table}
+
+Con la odometría en el lazo, el robot real se aparta del cuadrado de la misma forma que en la Sección~3.3, y termina a $84$~cm del punto de llegada (Figura~\ref{fig:ekf_cuadrado_tray}). En cambio, con el EKF el robot real sigue al cuadrado con una distancia media de $1.6$~cm, y termina a $5$~cm del punto de llegada con $1^\circ$ de error de orientación (Tabla~\ref{tab:ekf_cuadrado}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/ekf_cuadrado_error.pdf}
+\caption{Distancia del robot real al cuadrado y error de orientación respecto de la trayectoria, con la odometría y con el EKF como retroalimentación.}
+\label{fig:ekf_cuadrado_error}
+\end{figure}
+
+Los picos de unos $14$~cm y $3^\circ$ que se ven en la Figura~\ref{fig:ekf_cuadrado_error} coinciden con los vértices, y no se deben a errores de localización, ya que el error del EKF respecto de la pose real se mantuvo por debajo de $2.3$~cm durante todo el recorrido. Se deben a que el robot recorta las esquinas por el \emph{lookahead}, al igual que en la Sección~3.3.
+
+Por último, en la Figura~\ref{fig:ekf_cuadrado_rviz} se muestra la elipse de covarianza en RViz2 a lo largo del recorrido, también ampliada diez veces. En el cuadrado el láser ve siempre entre $3$ y $5$ postes, por lo que la incertidumbre no crece como en la circunferencia, y las elipses tienen un tamaño parecido en los lados y en los vértices. Sus diferencias de tamaño se deben a que cada una se dibuja en un momento distinto del ciclo, en el que la incertidumbre crece con cada predicción y baja con cada corrección.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{figuras/ekf_cuadrado_rviz.png}
+\caption{Elipse de covarianza del EKF en RViz2 durante el seguimiento del cuadrado, ampliada diez veces. Los puntos verdes son los postes que detecta el láser en ese instante.}
+\label{fig:ekf_cuadrado_rviz}
+\end{figure}
 
 % =====================================================================
 \section{Sistema desarrollado}
@@ -761,7 +829,7 @@ ros2 launch robmovil_ekf seguimiento_ekf.launch.py
 Si en cambio se quiere seguir la trayectoria utilizando solo la odometría, se ejecuta el siguiente comando, en el que también se pueden elegir las constantes del controlador.
 
 \begin{verbatim}
-ros2 launch lazo_cerrado seguimiento_odom.launch.py kp_xy:=0.8 kp_yaw:=1.5
+ros2 launch lazo_cerrado seguimiento_odom.launch.py kp_xy:=0.8 kp_yaw:=0.75
 \end{verbatim}
 
 Por último, para mover el robot con velocidades constantes y sin el controlador, se ejecutan la odometría y el EKF, se inicia la simulación y se publica la velocidad deseada, cada comando en una terminal distinta.
