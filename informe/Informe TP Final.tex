@@ -180,7 +180,7 @@ Combinada & $0.1$ & $0.1$ & $0.1$ & $10$ \\
 
 La corrida lateral evalúa el desplazamiento en $y$, propio del robot omnidireccional.
 
-En las corridas circulares se comandan a la vez una velocidad de avance $v_x$ y una velocidad de giro $\omega_z$, ambas constantes, por lo que el robot debería describir una circunferencia de radio $R = v_x/|\omega_z|$. Como $\omega_z$ es negativa, el recorrido es en sentido horario. Las dos corridas tienen la misma velocidad de giro, y en la rápida la velocidad de avance es el doble, por lo que el radio pasa de $0.5$~m a $1$~m. En ambas, una vuelta completa demora $2\pi/|\omega_z| \approx 20.9$~s, de manera que el robot recorre algo más de una vuelta. Esto permite comparar el efecto de la velocidad de avance sobre el error, con el mismo giro.
+En las corridas circulares se comandan a la vez una velocidad de avance $v_x$ y una de giro $\omega_z$, ambas constantes, de manera que el robot debería describir una circunferencia de radio $R = v_x/|\omega_z|$, en sentido horario porque $\omega_z$ es negativa. Las dos corridas tienen la misma velocidad de giro, pero en la rápida la velocidad de avance es el doble, lo que lleva el radio de $0.5$~m a $1$~m. Como una vuelta completa demora $2\pi/|\omega_z| \approx 20.9$~s, en ambas el robot recorre algo más de una vuelta. De esta forma, se puede ver el efecto que tiene la velocidad de avance sobre el error, manteniendo el mismo giro.
 
 Las dos últimas corridas combinan desplazamiento lateral con giro, y en la combinada se comandan las tres velocidades a la vez. 
 
@@ -190,7 +190,7 @@ El simulador informa la pose real del robot, por lo que la velocidad real se cal
 
 Además de la velocidad comandada y la real, se graficó la velocidad estimada por la odometría, que se calcula a partir del giro de las ruedas y, por lo tanto, no detecta el deslizamiento. La diferencia entre las velocidades comandada y estimada muestra qué tanto las ruedas siguen la consigna, mientras que la diferencia entre la estimada y la real muestra en qué medida el giro de las ruedas se traduce en movimiento del robot. 
 
-En la Figura~\ref{fig:modelo_vel} se muestran las velocidades de las corridas lateral, circular rápida y combinada. A su vez, en la Tabla~\ref{tab:vel_modelo} se resumen los promedios de las velocidades de las cinco corridas, sin tener en cuenta el primer segundo ni los últimos $0.2$~s, para descartar el arranque y el frenado del robot. Solo se incluyen las componentes que fueron comandadas en cada corrida.
+Las velocidades de las corridas lateral, circular rápida y combinada se presentan en la Figura~\ref{fig:modelo_vel}, y los promedios de las cinco corridas en la Tabla~\ref{tab:vel_modelo}. Para calcularlos no se tuvieron en cuenta el primer segundo ni los últimos $0.2$~s, que corresponden al arranque y al frenado del robot, y solo se incluyen las componentes que fueron comandadas en cada corrida.
 
 \begin{figure}[h]
 \centering
@@ -221,11 +221,11 @@ Combinada & $v_x$ [m/s] & $0.100$ & $0.097$ & $0.095$ \\
 \label{tab:vel_modelo}
 \end{table}
 
-En todas las corridas, el robot se mueve en la dirección y el sentido comandados, y las componentes que no se comandan se mantienen cercanas a cero. Sin embargo, las velocidades lineales reales resultan algo menores que las comandadas, y la diferencia es mayor cuando la velocidad es más alta. Por ejemplo, en la corrida combinada, en la que se comandan $0.1$~m/s en cada eje, la diferencia es de $0.005$~m/s, mientras que en la lateral, con $0.3$~m/s, es de $0.031$~m/s.
+En todas las corridas el robot se mueve en la dirección y el sentido comandados, y las componentes que no se comandan se mantienen cercanas a cero. Sin embargo, las velocidades lineales reales resultan algo menores que las comandadas, y la diferencia es mayor cuanto más alta es la velocidad, pasando de $0.005$~m/s en la corrida combinada, en la que se comandan $0.1$~m/s en cada eje, a $0.031$~m/s en la lateral, en la que se comandan $0.3$~m/s.
 
-Esta diferencia se puede separar en dos partes. Por un lado, las ruedas no llegan a la velocidad comandada, lo que se ve en que la velocidad lineal estimada es menor que la comandada. Por el otro lado, el robot se desplaza menos de lo que indican sus ruedas, ya que la velocidad lineal real es, a su vez, menor que la estimada. En la corrida lateral, cada una de estas partes representa aproximadamente la mitad de la diferencia. En cambio, la velocidad angular real es igual o algo mayor, en módulo, que la estimada.
+Parte de esta diferencia proviene de que las ruedas no llegan a la velocidad comandada, lo que se ve en que la velocidad lineal estimada es menor que la comandada. El resto proviene de que el robot se desplaza menos de lo que indican sus ruedas, ya que la velocidad lineal real es, a su vez, menor que la estimada. En la corrida lateral, cada una de estas partes representa aproximadamente la mitad de la diferencia. Con la velocidad angular no ocurre lo mismo, dado que la real es igual o algo mayor, en módulo, que la estimada.
 
-Además, la velocidad estimada presenta oscilaciones, que se deben principalmente a la resolución de los encoders. El tiempo entre dos lecturas es de $0.05$~s, de manera que un solo tick de diferencia en una rueda modifica la velocidad lineal estimada en unos $0.003$~m/s y la angular en unos $0.009$~rad/s.
+Además, la velocidad estimada presenta oscilaciones, que se deben principalmente a la resolución de los encoders. Como el tiempo entre dos lecturas es de $0.05$~s, un solo tick de diferencia en una rueda alcanza para modificar la velocidad lineal estimada en unos $0.003$~m/s y la angular en unos $0.009$~rad/s.
 
 \subsubsection{Pose estimada por odometría y pose real}
 
@@ -236,7 +236,7 @@ e_\theta &= \theta_{odom} - \theta_{gt}
 \end{align}
 donde el subíndice $gt$ indica los valores reales informados por el simulador y $e_\theta$ se normaliza al intervalo $(-\pi, \pi]$.
 
-En la Figura~\ref{fig:modelo_tray} se muestran las trayectorias de cada corrida, en la Figura~\ref{fig:modelo_ori} las orientaciones y en la Tabla~\ref{tab:error_odom} se resumen los errores. Todas las poses están expresadas en el marco \texttt{odom}.
+Las trayectorias y las orientaciones de cada corrida, expresadas en el marco \texttt{odom}, se presentan en las Figuras~\ref{fig:modelo_tray} y~\ref{fig:modelo_ori}, y los errores se resumen en la Tabla~\ref{tab:error_odom}.
 
 \begin{figure}[h]
 \centering
@@ -271,15 +271,15 @@ Combinada & $1.35$ & $3.0$ & $3.1$ & $-1.6^\circ$ \\
 
 En todas las corridas, la trayectoria estimada tiene la misma forma que la real. En la lateral, la mayor parte del error está en la dirección del movimiento, ya que la odometría estima un desplazamiento de $1.15$~m mientras que el robot se desplaza $1.08$~m. A su vez, el robot termina girado $2.4^\circ$ en sentido horario, pero la odometría estima un giro de $0.9^\circ$ en sentido antihorario.
 
-En las circulares se puede ver el efecto de la velocidad de avance. Al duplicarla, el recorrido también se duplica, pero el error máximo pasa de $1.5$~cm a $11.6$~cm. En estas corridas el error final es menor que el máximo porque el robot vuelve cerca del punto de partida, de manera que parte del error acumulado se compensa.
+En las circulares se puede ver el efecto de la velocidad de avance, dado que al duplicarla el recorrido también se duplica, pero el error máximo aumenta mucho más, de $1.5$~cm a $11.6$~cm. El error final es menor que el máximo porque el robot vuelve cerca del punto de partida, de manera que parte del error acumulado se compensa.
 
 \subsubsection{Análisis del error}
 
-La resolución de los encoders no alcanza para explicar estos errores. Como los encoders son absolutos, el error de redondeo de cada rueda no se acumula y es del orden de un tick ($0.63$~mm), mientras que los errores de posición son del orden de centímetros.
+Estos errores podrían deberse a distintas causas. La primera es la resolución de los encoders que, si bien limita el desplazamiento mínimo que puede detectar la odometría, no alcanza para explicarlos. Como los encoders son absolutos, el error de redondeo de cada rueda no se acumula y es del orden de un tick ($0.63$~mm), mientras que los errores de posición son del orden de centímetros.
 
-Tampoco se explican por la forma en la que se integra la pose. En cada paso, los desplazamientos se rotan según la orientación que tenía el robot al comenzar el paso, si bien la orientación cambia durante el mismo. Para evaluar este efecto, se repitió el cálculo utilizando la orientación en la mitad de cada paso, y el error máximo cambió, a lo sumo, en $0.5$~cm.
+Otra posible causa es la forma en la que se integra la pose, ya que en cada paso los desplazamientos se rotan según la orientación que tenía el robot al comenzarlo, y esta cambia durante el mismo. Para evaluar este efecto, se repitió el cálculo utilizando la orientación en la mitad de cada paso, y el error máximo cambió a lo sumo en $0.5$~cm, lo que indica que no es la causa principal.
 
-Por otro lado, si el radio de las ruedas fuera distinto al utilizado, la velocidad lineal estimada y la real diferirían siempre en la misma proporción. Sin embargo, la real es un $1.2\%$ menor que la estimada en la circular lenta, un $3.0\%$ en la circular rápida y un $5.6\%$ en la lateral. Es decir, la diferencia aumenta con la velocidad y es mayor en el desplazamiento lateral, lo que es compatible con el deslizamiento de las ruedas, que los encoders no pueden detectar.
+Por último, si el radio de las ruedas fuera distinto al utilizado, la velocidad lineal estimada y la real diferirían siempre en la misma proporción. Sin embargo, la diferencia entre ambas es de un $1.2\%$ en la circular lenta, un $3.0\%$ en la circular rápida y un $5.6\%$ en la lateral, es decir, aumenta con la velocidad y es mayor en el desplazamiento lateral. Esto es compatible con el deslizamiento de las ruedas, que los encoders no pueden detectar porque solo miden cuánto giró cada una.
 
 La odometría no tiene forma de corregir este error, que se acumula a medida que el robot avanza. Por eso, se la utiliza en conjunto con las observaciones de los postes en el EKF de la Sección~\ref{sec:ekf}.
 
@@ -333,7 +333,7 @@ Las velocidades resultantes se publican en \texttt{/robot/cmd\_vel} como un \tex
 
 \subsection{Trayectoria cuadrada y \emph{pursuit-based following}}
 
-La trayectoria de referencia es un cuadrado centrado en el origen del mapa.{\renewcommand{\thefootnote}{\fnsymbol{footnote}}\footnote{El enunciado indica un cuadrado de 2~m de lado, pero en la figura de la consigna los vértices están en $(\pm 2, \pm 2)$, lo que corresponde a 4~m de lado. Para la implementación se tomaron los vértices de la figura.}} El robot debe recorrerla en sentido antihorario, manteniendo una orientación opuesta al centro. Para definirla se siguió la figura de la consigna, en la que el robot está orientado a $90^\circ$, $180^\circ$, $270^\circ$ y $360^\circ$ en los vértices $(-2, 2)$, $(-2, -2)$, $(2, -2)$ y $(2, 2)$ respectivamente. Es decir, gira $90^\circ$ en sentido antihorario en cada lado. En las figuras de este informe, el eje $x$ del marco \texttt{map} se dibuja hacia la derecha y el eje $y$ hacia arriba, por lo que el cuadrado se ve girado $90^\circ$ respecto de la figura de la consigna.
+La trayectoria de referencia es un cuadrado centrado en el origen del mapa.{\renewcommand{\thefootnote}{\fnsymbol{footnote}}\footnote{El enunciado indica un cuadrado de 2~m de lado, pero en la figura de la consigna los vértices están en $(\pm 2, \pm 2)$, lo que corresponde a 4~m de lado. Para la implementación se tomaron los vértices de la figura.}} El robot debe recorrerla en sentido antihorario, manteniendo una orientación opuesta al centro. Para definir esta orientación se siguió la figura de la consigna, en la que el robot está orientado a $90^\circ$ en el vértice $(-2, 2)$, a $180^\circ$ en $(-2, -2)$, a $270^\circ$ en $(2, -2)$ y a $360^\circ$ en $(2, 2)$, es decir, gira $90^\circ$ en sentido antihorario en cada lado. Notar que en las figuras de este informe el eje $x$ del marco \texttt{map} se dibuja hacia la derecha y el eje $y$ hacia arriba, de manera que el cuadrado se ve girado $90^\circ$ respecto de la figura de la consigna.
 
 Entre dos vértices, la orientación objetivo se interpola linealmente
 \begin{equation}
@@ -357,7 +357,7 @@ De esta forma, el robot persigue un punto que siempre se encuentra por delante, 
 
 
 \subsection{Experimentos}
-Para elegir las constantes del controlador, se realizaron corridas en las que el robot sigue la trayectoria cuadrada completa, utilizando la odometría como retroalimentación. Se probaron tres valores de $k_{p,xy}$, tres de $k_{p,yaw}$ y tres de \emph{lookahead}, ya que este también influye en la velocidad del robot, variando un parámetro a la vez y dejando los otros fijos. Además, se probó una combinación del menor $k_{p,yaw}$ con el menor \emph{lookahead}. Se realizó una corrida por cada configuración.
+Para elegir las constantes del controlador, se realizaron corridas en las que el robot sigue la trayectoria cuadrada completa, utilizando la odometría como retroalimentación. Se probaron tres valores de $k_{p,xy}$, tres de $k_{p,yaw}$ y tres de \emph{lookahead}, variando un parámetro a la vez y dejando los otros fijos. El \emph{lookahead} se incluyó porque, si bien no es una constante del controlador, también influye en la velocidad del robot. Además, se probó una combinación del menor $k_{p,yaw}$ con el menor \emph{lookahead}. De cada configuración se realizó una sola corrida.
 
 En la Tabla~\ref{tab:barrido} se resumen los resultados, donde $d$ es la distancia del robot real al cuadrado, $e_p$ y $e_\theta$ son los errores de posición y de orientación del robot real respecto del último punto de la trayectoria, y $\bar{e}_{\theta,odom}$ es el promedio del error de orientación que ve el controlador, es decir, el que se calcula con la odometría. La duración se mide en tiempo de simulación, desde el primer comando hasta que el controlador da por terminada la trayectoria.
 
@@ -385,7 +385,7 @@ $0.8$ & $0.75$ & $0.15$ & $115$ & $0.18$ & $0.50$ & $0.79$ & $16.8^\circ$ & $4.2
 \label{tab:barrido}
 \end{table}
 
-En la Figura~\ref{fig:lazo_tray} se muestran las trayectorias. En todas las corridas, la trayectoria estimada sigue al cuadrado y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada. Esto se debe a que el controlador corrige el error respecto de la odometría, por lo que no puede detectar el error propio de la odometría que se vio en la Sección~2.4. También se ve que la trayectoria estimada recorta las esquinas, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice. El recorte aumenta con el \emph{lookahead}, con un máximo de $0.07$~m, $0.14$~m y $0.26$~m para $0.15$~m, $0.30$~m y $0.60$~m respectivamente.
+En todas las corridas la trayectoria estimada sigue al cuadrado y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada (Figura~\ref{fig:lazo_tray}). Esto se debe a que el controlador corrige el error respecto de la pose estimada, de manera que no puede detectar el error propio de la odometría que se vio en la Sección~2.4. A su vez, la trayectoria estimada recorta las esquinas, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice. Este recorte es mayor cuanto mayor es el \emph{lookahead}, pasando de un máximo de $0.07$~m con el menor de los tres a $0.26$~m con el mayor.
 
 \begin{figure}[h]
 \centering
@@ -396,7 +396,7 @@ En la Figura~\ref{fig:lazo_tray} se muestran las trayectorias. En todas las corr
 
 \subsubsection{Variación de $k_{p,xy}$}
 
-En la Figura~\ref{fig:lazo_kpxy} se muestran la pose objetivo, la estimada y la real para los tres valores de $k_{p,xy}$.
+La pose objetivo, la estimada y la real para los tres valores de $k_{p,xy}$ se presentan en la Figura~\ref{fig:lazo_kpxy}.
 
 \begin{figure}[h]
 \centering
@@ -405,11 +405,11 @@ En la Figura~\ref{fig:lazo_kpxy} se muestran la pose objetivo, la estimada y la 
 \label{fig:lazo_kpxy}
 \end{figure}
 
-El objetivo siempre está a una distancia aproximadamente igual al \emph{lookahead}, de manera que el error de posición que ve el controlador es casi constante y $k_{p,xy}$ determina la velocidad. El promedio de la velocidad lineal comandada fue de $0.13$~m/s, $0.26$~m/s y $0.51$~m/s para $k_{p,xy}$ de $0.4$, $0.8$ y $1.6$ respectivamente. Es decir, al duplicar la constante se duplica la velocidad y la duración se reduce a casi la mitad. Entre $0.4$ y $0.8$ el error del robot real es similar, pero con $1.6$ el error final de posición pasa de $0.90$~m a $2.12$~m y el de orientación de $20.8^\circ$ a $49.4^\circ$. Al igual que en la Sección~2.4, el error de la odometría es mayor a velocidades más altas.
+El objetivo siempre está a una distancia aproximadamente igual al \emph{lookahead}, de manera que el error de posición que ve el controlador es casi constante y $k_{p,xy}$ es la que determina la velocidad. Al duplicar la constante se duplica la velocidad del robot, y el recorrido se completa en casi la mitad del tiempo. Con $k_{p,xy} = 0.4$ la velocidad comandada promedio es de $0.13$~m/s, y pasa a $0.26$~m/s con $0.8$ y a $0.51$~m/s con $1.6$. El error del robot real es similar con los dos primeros valores, pero con $1.6$ el error final pasa a ser más del doble, tanto en posición como en orientación. Esto coincide con lo que se vio en la Sección~2.4, en la que el error de la odometría es mayor a velocidades más altas.
 
 \subsubsection{Variación de $k_{p,yaw}$}
 
-En la Figura~\ref{fig:lazo_kpyaw} se muestran los resultados para los tres valores de $k_{p,yaw}$.
+Para los tres valores de $k_{p,yaw}$, los resultados se presentan en la Figura~\ref{fig:lazo_kpyaw}.
 
 \begin{figure}[h]
 \centering
@@ -418,13 +418,13 @@ En la Figura~\ref{fig:lazo_kpyaw} se muestran los resultados para los tres valor
 \label{fig:lazo_kpyaw}
 \end{figure}
 
-La orientación objetivo cambia a lo largo de todo el recorrido, por lo que el robot siempre la sigue con un retraso. De la ley de control~\eqref{eq:ley_control}, para girar a una velocidad $\omega_z$ se necesita un error $e_\theta = \omega_z / k_{p,yaw}$, es decir, el retraso se reduce a la mitad al duplicar la constante. Con una velocidad angular promedio de $0.105$~rad/s, este error debería ser de unos $8.0^\circ$, $4.0^\circ$ y $2.0^\circ$ para $k_{p,yaw}$ de $0.75$, $1.5$ y $3.0$ respectivamente, y los valores obtenidos fueron de $7.7^\circ$, $3.8^\circ$ y $1.8^\circ$. La duración no cambia, ya que depende de la velocidad lineal.
+La orientación objetivo cambia a lo largo de todo el recorrido, de manera que el robot siempre la sigue con un retraso. Según la ley de control~\eqref{eq:ley_control}, para que el robot gire a una velocidad $\omega_z$ tiene que haber un error $e_\theta = \omega_z / k_{p,yaw}$, es decir, el retraso se reduce a la mitad al duplicar la constante. La velocidad angular promedio de estas corridas es de $0.105$~rad/s, por lo que el error debería ser de unos $8.0^\circ$ con $k_{p,yaw} = 0.75$, $4.0^\circ$ con $1.5$ y $2.0^\circ$ con $3.0$, y los valores obtenidos fueron de $7.7^\circ$, $3.8^\circ$ y $1.8^\circ$. La duración no cambia, ya que depende de la velocidad lineal.
 
-Sin embargo, que el controlador siga mejor la orientación no mejora el resultado del robot real. Con $k_{p,yaw}$ de $0.75$ y $1.5$ el error es prácticamente el mismo, y con $3.0$ es algo mayor, con un error final de posición de $1.00$~m y de orientación de $22.9^\circ$.
+Si bien al aumentar $k_{p,yaw}$ el controlador sigue mejor la orientación, esto no mejora el resultado del robot real. El error es prácticamente el mismo con $0.75$ y con $1.5$, y con $3.0$ es algo mayor, dado que el error final de posición llega a $1.00$~m y el de orientación a $22.9^\circ$.
 
 \subsubsection{Variación del \emph{lookahead}}
 
-En la Figura~\ref{fig:lazo_lookahead} se muestran los resultados para los tres valores de \emph{lookahead}.
+Los resultados para los tres valores de \emph{lookahead} se presentan en la Figura~\ref{fig:lazo_lookahead}.
 
 \begin{figure}[h]
 \centering
@@ -433,11 +433,11 @@ En la Figura~\ref{fig:lazo_lookahead} se muestran los resultados para los tres v
 \label{fig:lazo_lookahead}
 \end{figure}
 
-Cambiar el \emph{lookahead} tiene un efecto parecido al de cambiar $k_{p,xy}$, porque al cambiar la distancia al objetivo también cambia la velocidad. Con $0.15$~m el promedio de la velocidad comandada es de $0.14$~m/s, similar al de $k_{p,xy} = 0.4$, y con $0.60$~m es de $0.48$~m/s, similar al de $k_{p,xy} = 1.6$. La diferencia es que, además, un \emph{lookahead} menor hace que el robot recorte menos las esquinas. Con $0.15$~m el error final de posición es de $0.82$~m y el de orientación de $18.2^\circ$.
+Cambiar el \emph{lookahead} tiene un efecto parecido al de cambiar $k_{p,xy}$, porque al cambiar la distancia al objetivo también cambia la velocidad. Con $0.15$~m la velocidad comandada promedio es de $0.14$~m/s, similar a la que se obtiene con $k_{p,xy} = 0.4$, y con $0.60$~m es de $0.48$~m/s, similar a la de $k_{p,xy} = 1.6$. La diferencia es que, además, con un \emph{lookahead} menor el robot recorta menos las esquinas. Con $0.15$~m, el error final de posición baja a $0.82$~m y el de orientación a $18.2^\circ$.
 
 \subsubsection{Velocidades asignadas}
 
-En la Figura~\ref{fig:lazo_vel} se muestran las velocidades asignadas por el controlador durante las corridas.
+Las velocidades que asignó el controlador en cada momento se presentan en la Figura~\ref{fig:lazo_vel}.
 
 \begin{figure}[h]
 \centering
@@ -446,15 +446,15 @@ En la Figura~\ref{fig:lazo_vel} se muestran las velocidades asignadas por el con
 \label{fig:lazo_vel}
 \end{figure}
 
-Al comenzar cada lado del cuadrado, el robot está de espaldas a la dirección en la que se mueve, por lo que $v_x$ es negativa y $v_y$ es chica. A medida que avanza va girando, de manera que al final del lado se mueve de costado, con $v_x$ cercana a cero y $v_y$ máxima. Los cambios bruscos corresponden a los vértices, en los que cambia la dirección del movimiento. A su vez, $\omega_z$ se mantiene casi constante a lo largo de cada lado, alrededor de $0.11$~rad/s cuando $k_{p,xy} = 0.8$ y el \emph{lookahead} es de $0.30$~m, porque la orientación objetivo varía linealmente. Los picos de $\omega_z$ aparecen al comenzar y en los vértices, y son mayores cuanto mayor es $k_{p,yaw}$. En los vértices se deben a que, al pasar al lado siguiente, el objetivo avanza sobre la trayectoria más rápido que el robot.
+Al comenzar cada lado del cuadrado, el robot está de espaldas a la dirección en la que se mueve, de manera que $v_x$ es negativa y $v_y$ es chica. A medida que avanza va girando, y al final del lado se mueve de costado, con $v_x$ cercana a cero y $v_y$ máxima. Los cambios bruscos corresponden a los vértices, en los que cambia la dirección del movimiento. A su vez, como la orientación objetivo varía linealmente, $\omega_z$ se mantiene casi constante a lo largo de cada lado, salvo por los picos que aparecen al comenzar y en los vértices, que son mayores cuanto mayor es $k_{p,yaw}$. Los de los vértices se deben a que, al pasar al lado siguiente, el objetivo avanza sobre la trayectoria más rápido que el robot.
 
-Además, se ve una oscilación rápida en las velocidades, que se debe a que el objetivo avanza de a un waypoint. Al hacerlo, la distancia al objetivo cambia en $0.05$~m y, con $k_{p,xy} = 0.8$, la velocidad lineal cambia en $0.04$~m/s.
+Además, las velocidades presentan una oscilación rápida, que se debe a que el objetivo avanza de a un waypoint. Cada vez que lo hace, la distancia al objetivo cambia en $0.05$~m, lo que con $k_{p,xy} = 0.8$ modifica la velocidad lineal en $0.04$~m/s.
 
 \subsubsection{Elección de las constantes}
 
-Se eligieron $k_{p,xy} = 0.8$, $k_{p,yaw} = 1.5$ y un \emph{lookahead} de $0.15$~m. Junto con la combinación de $k_{p,yaw} = 0.75$ y \emph{lookahead} de $0.15$~m, es la configuración con menor error del robot real. La combinación tuvo un error final algo menor, pero la diferencia es chica y se realizó una sola corrida de cada una. Entre las dos se eligió $k_{p,yaw} = 1.5$, dado que el error de orientación que ve el controlador es la mitad. La desventaja de esta elección es que el recorrido tarda casi el doble que con un \emph{lookahead} de $0.30$~m. Con $k_{p,xy} = 0.4$ la duración es similar, pero el error final es mayor y se recortan más las esquinas.
+Se eligieron $k_{p,xy} = 0.8$, $k_{p,yaw} = 1.5$ y un \emph{lookahead} de $0.15$~m, ya que es una de las dos configuraciones con menor error del robot real. La otra es la combinación con $k_{p,yaw} = 0.75$, que tuvo un error final algo menor, pero la diferencia es chica y solo se realizó una corrida de cada una. Entre las dos se eligió $k_{p,yaw} = 1.5$, dado que el error de orientación que ve el controlador es la mitad. Por el otro lado, la desventaja de esta elección es que el recorrido tarda casi el doble que con un \emph{lookahead} de $0.30$~m. Si bien con $k_{p,xy} = 0.4$ la duración es similar, el error final es mayor y se recortan más las esquinas.
 
-El error que queda no puede corregirse ajustando las constantes, ya que el controlador sigue correctamente a la pose estimada y es esta última la que se aparta de la real. Para reducirlo, es necesario mejorar la estimación de la pose, como se propone en la Sección~\ref{sec:ekf}.
+El error que queda no puede corregirse ajustando las constantes, ya que el controlador sigue correctamente a la pose estimada y es esta última la que se aparta de la real. Para reducirlo es necesario mejorar la estimación de la pose, para lo que se utiliza el EKF de la Sección~\ref{sec:ekf}.
 
 % =====================================================================
 \section{Localización basada en EKF}
@@ -487,16 +487,16 @@ El filtro combina la odometría, que predice el movimiento del robot, y las obse
 \end{equation} 
 siendo $(p_x, p_y)$ la posición y $\theta$ la orientación.
 
-\paragraph{Predicción.} La odometría informa el movimiento del robot en cada paso, medido en su propio marco ($d_{x_b}$ hacia adelante, $d_{y_b}$ hacia el costado y $d\theta$ de giro). Los tres valores son la entrada de control del filtro: $\vec{u} = [d_{x_b},\ d_{y_b},\ d\theta]^T$. Se calculan multiplicando la velocidad de \texttt{/robot/odometry} por el tiempo $\Delta t$ entre dos mediciones.
+\paragraph{Predicción.} La odometría informa la velocidad del robot, medida en su propio marco ($v_x$ hacia adelante, $v_y$ hacia el costado y $\omega$ de giro). Los tres valores son la entrada de control del filtro, $\vec{u} = [v_x,\ v_y,\ \omega]^T$, y se toman del mensaje de \texttt{/robot/odometry}. 
 
-Para actualizar la pose, se rota  $(d_{x_b}, d_{y_b})$ con el ángulo $\theta$ y se suma a la pose anterior, de modo que quede expresada en el marco \texttt{map}:
+Para actualizar la pose, se multiplica la velocidad por el tiempo $\Delta t$ entre dos mensajes de odometría, se rota el desplazamiento con el ángulo $\theta$ y se suma a la pose anterior, de modo que quede expresada en el marco \texttt{map}:
 
 \begin{equation}
 f(\vec{x},\vec{u},\vec{w}) =
 \begin{bmatrix}
-p_x + d_{x_b}\cos\theta - d_{y_b}\sin\theta + w_x \\
-p_y + d_{x_b}\sin\theta + d_{y_b}\cos\theta + w_y \\
-\theta + d\theta + w_\theta
+p_x + (v_x\cos\theta - v_y\sin\theta)\,\Delta t + w_x \\
+p_y + (v_x\sin\theta + v_y\cos\theta)\,\Delta t + w_y \\
+\theta + \omega\,\Delta t + w_\theta
 \end{bmatrix}
 \end{equation}
 
@@ -519,8 +519,8 @@ La medición esperada se compara con la medición del detector, $\vec{z} = [r,\ 
 \begin{equation}
 J_f =
 \begin{bmatrix}
-1 & 0 & -d_{x_b}\sin\theta - d_{y_b}\cos\theta \\
-0 & 1 & \phantom{-}d_{x_b}\cos\theta - d_{y_b}\sin\theta \\
+1 & 0 & -(v_x\sin\theta + v_y\cos\theta)\,\Delta t \\
+0 & 1 & \phantom{-}(v_x\cos\theta - v_y\sin\theta)\,\Delta t \\
 0 & 0 & 1
 \end{bmatrix}
 \end{equation}
@@ -535,9 +535,7 @@ J_h =
 
 La componente angular de la innovación se normaliza siempre al intervalo $(-\pi, \pi]$ para evitar discontinuidades.
 
-\begin{tareas}
-    \item \TODO{Aclarar que la implementación es propia con Eigen (no se usó la librería EKFilter mencionada en el anexo de la consigna) -- justificar la decisión.}
-\end{tareas}
+El filtro se implementó con la clase \texttt{EKFilter}, que es la que utiliza el paquete \texttt{robmovil\_ekf} de la materia. Como en el robot omnidireccional la entrada $\vec{u}$ tiene tres componentes, las dimensiones se declararon como \texttt{EKFilter(3, 3, 3, 2, 2)}, tal como se indica en el anexo de la consigna. La clase también requiere los Jacobianos de $f$ con respecto a $\vec{w}$ y de $h$ con respecto a $\vec{v}$, que en este caso son la identidad porque los ruidos se suman directamente a la pose y a la medición.
 
 \subsection{Matrices de covarianza}
 
@@ -572,16 +570,24 @@ Es decir, al comenzar se supone un desvío de $0.1$~m en cada coordenada y de $0
 
 \subsection{Nodo EKF y asociación de datos}
 
-El nodo \texttt{ekf\_localizer} implementa el filtro. Trabaja con tres entradas y dos salidas.
+El nodo \texttt{localizer}, del paquete \texttt{robmovil\_ekf}, implementa el filtro. Trabaja con tres entradas y dos salidas.
 
 \paragraph{Entradas.}
 \begin{itemize}
-    \item \texttt{/posts}: el mapa de postes, publicado por el simulador en el marco \texttt{map}. No se construye durante la ejecución, sino que se recibe una sola vez y se guarda.
-    \item \texttt{/robot/odometry}: cada mensaje dispara un paso de \textbf{predicción}, con $\vec{u}$ calculado como en la Sección~4.2.
+    \item \texttt{/posts}: el mapa de postes, publicado por el simulador en el marco \texttt{map}. No se construye durante la ejecución, sino que se recibe una sola vez y se guarda. El simulador lo publica al iniciar la simulación, por lo que el nodo tiene que estar corriendo antes.
+    \item \texttt{/robot/odometry}: cada mensaje dispara un paso de \textbf{predicción}, con $\vec{u}$ y $f$ como en la Sección~4.2.
     \item \texttt{/landmarks}: cada mensaje dispara un paso de \textbf{corrección} con las observaciones de la Sección~4.1.
 \end{itemize}
 
 La pose inicial se toma de la transformación  \texttt{map} $\rightarrow$ \texttt{base\_link} al empezar, y a partir de ahí comienza a funcionar el filtro. 
+
+\paragraph{Predicción.} Con cada mensaje de odometría se actualizan la pose y su covarianza, con el paso de predicción estándar del EKF.
+
+\begin{align}
+\vec{x}^- &= f(\vec{x},\vec{u},0) \\
+P^- &= J_f P J_f^T + Q
+\end{align}
+siendo $\vec{x}$ y $P$ la pose y la covarianza anteriores a la predicción, y $J_f$ el Jacobiano evaluado en esa pose. El tiempo $\Delta t$ se calcula a partir de las marcas de tiempo de los mensajes de odometría, de manera que no depende de qué tan rápido corre la simulación.
 
 \paragraph{Asociación de datos.} El detector entrega observaciones que, a priori, no se sabe a qué poste del mapa corresponden y el filtro usa ese dato para evaluar $h$. Para cada observación se hace lo siguiente: 
 \begin{enumerate}
@@ -595,16 +601,16 @@ La pose inicial se toma de la transformación  \texttt{map} $\rightarrow$ \textt
 
 Además, si la observación tiene un rango menor a $0.2$~m, se descarta para evitar que el jacobiano $J_h$ diverja ($d_x/\sqrt{q}$ y $d_y/q$ con $q \to 0$).
 
-\paragraph{Corrección.} Cada observación aceptada es procesada de manera independiente, con el paso de corrección estándar del EKF. 
+\paragraph{Corrección.} Las observaciones aceptadas se procesan de a una, con el paso de corrección estándar del EKF. De esta forma, cada observación se asocia y se corrige a partir de la pose que resultó de corregir con la anterior.
 
 \begin{align}
 S &= J_h P^- J_h^T + R \\
 K &= P^- J_h^T S^{-1} \\
 \vec{x}^+ &= \vec{x}^- + K\,(\vec{z} - h(\vec{x}^-)) \\
-P^+ &= (I - K J_h)\,P^-\,(I - K J_h)^T + K R K^T
+P^+ &= (I - K J_h)\,P^-
 \end{align}
 
-Para $P^+$ se usa la forma de Joseph, que mantiene la matriz simétrica y definida positiva ante errores numéricos.
+Si bien estas son las ecuaciones del filtro, la clase \texttt{EKFilter} no las calcula de forma directa, sino que guarda la covarianza como un producto de matrices $P = U D U^T$, siendo $U$ triangular superior con unos en la diagonal y $D$ diagonal, y en cada paso actualiza $U$ y $D$. El resultado es el mismo, ya que $P$ se puede recuperar a partir de ellas.
 
 \paragraph{Salidas.} Luego de cada predicción o corrección, el nodo publica la pose estimada como la transformación \texttt{map} $\rightarrow$ \texttt{base\_link\_ekf} y como un mensaje \texttt{nav\_msgs/Odometry} en \texttt{/robot/odometry\_ekf}, que incluye la covarianza $P$ del estado.
 
@@ -630,7 +636,7 @@ Para $P^+$ se usa la forma de Joseph, que mantiene la matriz simétrica y defini
 \section{Sistema desarrollado}
 \subsection{Paquetes y nodos}
 
-El sistema está compuesto por cuatro paquetes de ROS2. Tres de ellos contienen los nodos, y se corresponden con las tres etapas descriptas en la introducción. El cuarto, \texttt{robmovil\_msgs}, es el paquete de mensajes de la materia, que se utiliza para los encoders, la trayectoria y los landmarks. Los nodos se resumen en la Tabla~\ref{tab:nodos}.
+El sistema está compuesto por cinco paquetes de ROS2. Tres de ellos contienen los nodos (Tabla~\ref{tab:nodos}) y se corresponden con las tres etapas descriptas en la introducción. Los otros dos son de la materia y contienen lo que los nodos necesitan para funcionar, dado que \texttt{robmovil\_msgs} tiene los mensajes de los encoders, la trayectoria y los landmarks, y \texttt{kfilter} es la librería que contiene la clase \texttt{EKFilter}.
 
 \begin{table}[h]
 \centering
@@ -642,8 +648,8 @@ El sistema está compuesto por cuatro paquetes de ROS2. Tres de ellos contienen 
 \texttt{modelo\_holonomico} & \texttt{mecanum\_odometry\_node} & Cinemática inversa y odometría (Sección~2) \\
 \texttt{lazo\_cerrado} & \texttt{trajectory\_generator} & Generación de la trayectoria (Sección~3.2) \\
  & \texttt{trajectory\_follower} & Controlador y \emph{pursuit} (Sección~3) \\
-\texttt{ekf\_localizer} & \texttt{landmark\_detector\_node} & Detección de postes (Sección~4.1) \\
- & \texttt{ekf\_localizer} & Filtro EKF (Sección~4.4) \\
+\texttt{robmovil\_ekf} & \texttt{landmark\_detector\_node} & Detección de postes (Sección~4.1) \\
+ & \texttt{localizer} & Filtro EKF (Sección~4.4) \\
 \bottomrule
 \end{tabular}
 \caption{Nodos implementados.}
@@ -652,7 +658,7 @@ El sistema está compuesto por cuatro paquetes de ROS2. Tres de ellos contienen 
 
 \subsection{Tópicos y transformaciones}
 
-En la Figura~\ref{fig:sistema} se muestra cómo se comunican los nodos entre sí y con el simulador cuando el robot sigue la trayectoria utilizando la estimación del EKF. El controlador no recibe la pose por un tópico, sino que la obtiene de una transformación. De esta forma, para pasar de utilizar la odometría a utilizar el EKF alcanza con cambiar el parámetro \texttt{base\_frame} de \texttt{base\_link} a \texttt{base\_link\_ekf}.
+La comunicación de los nodos entre sí y con el simulador, cuando el robot sigue la trayectoria utilizando la estimación del EKF, se representa en la Figura~\ref{fig:sistema}. El controlador no recibe la pose por un tópico, sino que la obtiene de una transformación, de manera que para pasar de utilizar la odometría a utilizar el EKF alcanza con cambiar el parámetro \texttt{base\_frame} de \texttt{base\_link} a \texttt{base\_link\_ekf}.
 
 \begin{figure}[h]
 \centering
@@ -664,7 +670,7 @@ En la Figura~\ref{fig:sistema} se muestra cómo se comunican los nodos entre sí
   \node[blk] (det) at (6.7,-2) {landmark\_detector};
   \node[blk] (fol) at (13.3,2) {trajectory\_follower};
   \node[blk] (gen) at (13.3,4.2) {trajectory\_generator};
-  \node[blk] (ekf) at (13.3,-2) {ekf\_localizer};
+  \node[blk] (ekf) at (13.3,-2) {localizer};
   \draw[->] ($(odo.west)+(0,0.25)$) -- node[lab, above] {/robot/*\_wheel/cmd\_vel} ($(sim.east)+(0,2.25)$);
   \draw[->] ($(sim.east)+(0,1.75)$) -- node[lab, below] {/robot/encoders} ($(odo.west)+(0,-0.25)$);
   \draw[->] ($(sim.east)+(0,-2)$) -- node[lab, above] {/robot/front\_laser/scan} (det.west);
@@ -679,7 +685,7 @@ En la Figura~\ref{fig:sistema} se muestra cómo se comunican los nodos entre sí
 \label{fig:sistema}
 \end{figure}
 
-Los tipos de mensaje de cada tópico se detallan en la Tabla~\ref{tab:topicos}. Además de los que aparecen en la figura, algunos nodos publican tópicos que sirven para visualizar el funcionamiento del sistema en RViz2 o para registrar los experimentos, pero que ningún otro nodo necesita.
+Los mensajes de cada tópico se detallan en la Tabla~\ref{tab:topicos}. Además de los que aparecen en la figura, se incluyen otros que ningún nodo necesita para funcionar, pero que sirven para visualizar el sistema en RViz2 o para registrar los experimentos.
 
 \begin{table}[h]
 \centering
@@ -700,7 +706,7 @@ Los tipos de mensaje de cada tópico se detallan en la Tabla~\ref{tab:topicos}. 
 \texttt{/desired\_path} & \texttt{nav\_msgs/Path} & \texttt{trajectory\_generator} \\
 \texttt{/goal\_pose} & \texttt{geometry\_msgs/PoseStamped} & \texttt{trajectory\_follower} \\
 \texttt{/real\_path} & \texttt{nav\_msgs/Path} & \texttt{trajectory\_follower} \\
-\texttt{/robot/odometry\_ekf} & \texttt{nav\_msgs/Odometry} & \texttt{ekf\_localizer} \\
+\texttt{/robot/odometry\_ekf} & \texttt{nav\_msgs/Odometry} & \texttt{localizer} \\
 \texttt{/landmark\_markers} & \texttt{visualization\_msgs/MarkerArray} & \texttt{landmark\_detector} \\
 \bottomrule
 \end{tabular}
@@ -708,7 +714,7 @@ Los tipos de mensaje de cada tópico se detallan en la Tabla~\ref{tab:topicos}. 
 \label{tab:topicos}
 \end{table}
 
-Por otro lado, las poses se comparten a través de las transformaciones de la Tabla~\ref{tab:tf}. La pose real \texttt{base\_link\_gt} solo se utiliza para evaluar los resultados, y ningún nodo la usa como entrada.
+A su vez, las poses se comparten a través de las transformaciones de la Tabla~\ref{tab:tf}. La pose real, \texttt{base\_link\_gt}, no es entrada de ningún nodo, sino que solo se utiliza para evaluar los resultados.
 
 \begin{table}[h]
 \centering
@@ -721,7 +727,7 @@ Por otro lado, las poses se comparten a través de las transformaciones de la Ta
 \texttt{odom} $\rightarrow$ \texttt{base\_link\_gt} & Simulador & Pose real \\
 \texttt{base\_link} $\rightarrow$ \texttt{front\_laser} & Simulador & Posición del láser en el robot \\
 \texttt{odom} $\rightarrow$ \texttt{base\_link} & \texttt{mecanum\_odometry} & Pose estimada por odometría \\
-\texttt{map} $\rightarrow$ \texttt{base\_link\_ekf} & \texttt{ekf\_localizer} & Pose estimada por el EKF \\
+\texttt{map} $\rightarrow$ \texttt{base\_link\_ekf} & \texttt{localizer} & Pose estimada por el EKF \\
 \bottomrule
 \end{tabular}
 \caption{Transformaciones del sistema.}
@@ -730,7 +736,7 @@ Por otro lado, las poses se comparten a través de las transformaciones de la Ta
 
 \subsection{Instrucciones de ejecución}
 
-El sistema se ejecuta dentro del contenedor de Docker de la materia, que incluye ROS2 Humble y CoppeliaSim. La ruta del repositorio en la computadora está escrita en el archivo \texttt{start-docker.sh} de la carpeta \texttt{ros\_docker}, por lo que se la debe modificar según dónde se lo haya clonado. Desde esa carpeta se crea la imagen, se inicia el contenedor y se abre una terminal dentro de él.
+El sistema se ejecuta dentro del contenedor de Docker de la materia, que incluye ROS2 Humble y CoppeliaSim. En el archivo \texttt{start-docker.sh}, de la carpeta \texttt{ros\_docker}, está escrita la ruta del repositorio en la computadora, por lo que se debe modificar según dónde se lo haya clonado. Luego, desde esa carpeta, se crea la imagen, se inicia el contenedor y se abre una terminal dentro de él.
 
 \begin{verbatim}
 bash start-docker.sh build
@@ -746,23 +752,23 @@ colcon build --symlink-install
 source install/setup.bash
 \end{verbatim}
 
-Con el workspace compilado, se abre CoppeliaSim con el comando \texttt{coppeliaSim.sh}, se carga la escena \texttt{coppeliaSim/omni\_ekf.ttt} y se inicia la simulación. En otra terminal del contenedor se ejecuta el sistema completo, que sigue la trayectoria utilizando la estimación del EKF.
+Con el workspace compilado, se abre CoppeliaSim con el comando \texttt{coppeliaSim.sh} y se carga la escena \texttt{coppeliaSim/omni\_ekf.ttt}. Como el simulador publica los postes una sola vez, al iniciar la simulación, los nodos tienen que estar corriendo antes. Por eso, primero se ejecuta el sistema completo en otra terminal del contenedor, y luego se inicia la simulación para que el robot siga la trayectoria utilizando la estimación del EKF.
 
 \begin{verbatim}
-ros2 launch ekf_localizer seguimiento_ekf.launch.py
+ros2 launch robmovil_ekf seguimiento_ekf.launch.py
 \end{verbatim}
 
-Para seguir la trayectoria utilizando solo la odometría, se ejecuta el siguiente comando, en el que se pueden elegir las constantes del controlador.
+Si en cambio se quiere seguir la trayectoria utilizando solo la odometría, se ejecuta el siguiente comando, en el que también se pueden elegir las constantes del controlador.
 
 \begin{verbatim}
 ros2 launch lazo_cerrado seguimiento_odom.launch.py kp_xy:=0.8 kp_yaw:=1.5
 \end{verbatim}
 
-Por último, para mover el robot con velocidades constantes, sin el controlador, se ejecutan la odometría y el EKF, y se publica la velocidad deseada, cada comando en una terminal distinta.
+Por último, para mover el robot con velocidades constantes y sin el controlador, se ejecutan la odometría y el EKF, se inicia la simulación y se publica la velocidad deseada, cada comando en una terminal distinta.
 
 \begin{verbatim}
 ros2 launch modelo_holonomico odometry.launch.py
-ros2 launch ekf_localizer ekf_localizer.launch.py
+ros2 launch robmovil_ekf localizer.launch.py
 ros2 topic pub -r 10 /robot/cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.1, y: 0.0}, angular: {z: 0.1}}"
 \end{verbatim}
