@@ -191,7 +191,7 @@ Las dos últimas corridas combinan desplazamiento lateral con giro, y en la comb
 
 \subsubsection{Velocidades comandadas y reales}
 
-Para comparar las velocidades, se calculó la velocidad real a partir de la pose que informa el simulador, y se la graficó junto con la comandada y con la estimada por la odometría (Figura~\ref{fig:modelo_vel}). En la Tabla~\ref{tab:vel_modelo} se resumen los promedios de cada corrida, sin tener en cuenta el arranque ni el frenado.
+Para comparar las velocidades, se calculó la velocidad real a partir de la pose que informa el simulador, y se la graficó junto con la comandada y con la estimada por la odometría (Figura~\ref{fig:modelo_vel}). En la Tabla~\ref{tab:vel_modelo} se resumen los promedios de cada corrida, sin tener en cuenta el primer segundo ni los últimos $0.2$~s, que corresponden al arranque y al frenado del robot.
 
 \begin{figure}[!htbp]
 \centering
@@ -356,7 +356,7 @@ De esta forma, el robot persigue un punto que siempre se encuentra por delante, 
 \label{sec:lazo_exp}
 Para elegir las constantes del controlador, se realizaron corridas en las que el robot sigue la trayectoria cuadrada completa, utilizando la odometría como retroalimentación y un \emph{lookahead} de $0.30$~m. Se probaron tres valores de $k_{p,xy}$ y tres de $k_{p,yaw}$, variando una constante a la vez y dejando la otra fija, y de cada configuración se realizó una sola corrida.
 
-En la Tabla~\ref{tab:barrido} se resumen los resultados. Las columnas $d$, $e_p$ y $e_\theta$ corresponden al robot real, siendo $d$ su distancia al cuadrado a lo largo del recorrido, y $e_p$ y $e_\theta$ los errores de posición y de orientación con los que termina respecto del punto de llegada. Las dos últimas columnas corresponden a la orientación según la odometría, que es la que ve el controlador. Como el objetivo está más adelante sobre la trayectoria, esa orientación se puede comparar con la del objetivo, $\bar{e}_{\theta,obj}$, que es el error que corrige la ley de control, o con la que corresponde al lugar en el que se encuentra el robot, $\bar{e}_{\theta,tray}$, que indica si el robot está orientado como debería. La duración se mide en tiempo de simulación, desde el primer comando hasta que el controlador da por terminada la trayectoria.
+En la Tabla~\ref{tab:barrido} se resumen los resultados. Las columnas $d$, $e_p$ y $e_\theta$ corresponden al robot real, siendo $d$ su distancia al cuadrado a lo largo del recorrido, y $e_p$ y $e_\theta$ los errores de posición y de orientación con los que termina respecto del punto de llegada. Las dos últimas columnas corresponden a la pose estimada por la odometría, que es la que ve el controlador, siendo $\bar{e}_{p,tray}$ la distancia media de esa pose al cuadrado, y $\bar{e}_{\theta,tray}$ el error medio entre su orientación y la que corresponde al lugar de la trayectoria en el que se encuentra el robot. La duración se mide en tiempo de simulación, desde el primer comando hasta que el controlador da por terminada la trayectoria.
 
 \begin{table}[htbp]
 \centering
@@ -364,21 +364,21 @@ En la Tabla~\ref{tab:barrido} se resumen los resultados. Las columnas $d$, $e_p$
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{ccccccccc}
 \toprule
-$k_{p,xy}$ & $k_{p,yaw}$ & Duración [s] & $d$ medio [m] & $d$ máx. [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{\theta,obj}$ & $\bar{e}_{\theta,tray}$ \\
+$k_{p,xy}$ & $k_{p,yaw}$ & Duración [s] & $d$ medio [m] & $d$ máx. [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{p,tray}$ [cm] & $\bar{e}_{\theta,tray}$ \\
 \midrule
-$0.4$ & $1.5$ & $123$ & $0.20$ & $0.54$ & $0.90$ & $19.9^\circ$ & $1.9^\circ$ & $5.3^\circ$ \\
-$0.8$ & $1.5$ & $64$ & $0.22$ & $0.56$ & $0.90$ & $20.8^\circ$ & $3.8^\circ$ & $3.4^\circ$ \\
-$1.6$ & $1.5$ & $38$ & $0.42$ & $1.13$ & $2.12$ & $49.4^\circ$ & $7.0^\circ$ & $1.4^\circ$ \\
+$0.4$ & $1.5$ & $123$ & $0.20$ & $0.54$ & $0.90$ & $19.9^\circ$ & $1.3$ & $5.3^\circ$ \\
+$0.8$ & $1.5$ & $64$ & $0.22$ & $0.56$ & $0.90$ & $20.8^\circ$ & $1.5$ & $3.4^\circ$ \\
+$1.6$ & $1.5$ & $38$ & $0.42$ & $1.13$ & $2.12$ & $49.4^\circ$ & $2.3$ & $1.4^\circ$ \\
 \midrule
-$0.8$ & $0.75$ & $65$ & $0.22$ & $0.55$ & $0.88$ & $19.5^\circ$ & $7.7^\circ$ & $0.7^\circ$ \\
-$0.8$ & $3.0$ & $65$ & $0.23$ & $0.59$ & $1.00$ & $22.9^\circ$ & $1.8^\circ$ & $5.3^\circ$ \\
+$0.8$ & $0.75$ & $65$ & $0.22$ & $0.55$ & $0.88$ & $19.5^\circ$ & $1.5$ & $0.7^\circ$ \\
+$0.8$ & $3.0$ & $65$ & $0.23$ & $0.59$ & $1.00$ & $22.9^\circ$ & $1.4$ & $5.3^\circ$ \\
 \bottomrule
 \end{tabular}
 \caption{Resultados de las corridas con distintas constantes.}
 \label{tab:barrido}
 \end{table}
 
-En todas las corridas la trayectoria estimada sigue al cuadrado y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada (Figura~\ref{fig:lazo_tray}). Esto se debe a que el controlador corrige el error respecto de la pose estimada, de manera que no puede detectar el error propio de la odometría que se vio en la Sección~\ref{sec:modelo_exp}. A su vez, la trayectoria estimada recorta las esquinas hasta $0.14$~m, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice.
+En todas las corridas la trayectoria estimada sigue al cuadrado, con una distancia media de entre $1.3$ y $2.3$~cm, y el controlador da por terminado el recorrido, pero el robot real se va desviando y termina lejos del punto de llegada (Figura~\ref{fig:lazo_tray}). Esto se debe a que el controlador corrige el error respecto de la pose estimada, de manera que no puede detectar el error propio de la odometría que se vio en la Sección~\ref{sec:modelo_exp}. A su vez, la trayectoria estimada recorta las esquinas hasta $0.14$~m, dado que el objetivo pasa al lado siguiente antes de que el robot llegue al vértice.
 
 \begin{figure}[htbp]
 \centering
