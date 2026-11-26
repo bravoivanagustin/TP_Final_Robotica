@@ -57,7 +57,7 @@ Visualization Manager:
     - Alpha: 0.6
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
-      Description File: /root/ros2_ws/src/robotica/URDF/nashe.urdf
+      Description File: /root/ros2_ws/src/robotica/URDF/holonomico.urdf
       Description Source: File
       Description Topic:
         Depth: 5

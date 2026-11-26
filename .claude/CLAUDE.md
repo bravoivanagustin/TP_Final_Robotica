@@ -178,7 +178,7 @@ The course's `EKFilter` template requires matrix dimensions at construction. For
   - Launcher combo `seguimiento_ekf.launch.py`: odometría + detector + EKF + controller con `base_frame:=base_link_ekf`.
   - Deep dive: `docs/03_ekf.md`.
 - **`kfilter/`** — librería `EKFilter` de la cátedra (header-only + `kstatics.cpp`), sin modificar.
-- **`URDF/`** — `nashe.urdf` plus Collada meshes for body, Hokuyo URG-04LX laser, and the four Swedish wheels.
+- **`URDF/`** — `holonomico.urdf` plus Collada meshes for body, Hokuyo URG-04LX laser, and the four Swedish wheels.
 - **`coppeliaSim/`** — `omni_ekf.ttt` (única escena; es la que antes se llamaba `omni_ekf_v2.ttt`, spawn en `(-2, +2)` con yaw π/2), `tpfinal.rviz` (RViz config). Binary, not built.
 - **`informe/`** — informe final en TeX (`Informe TP Final.tex` + `UBA.png` para la carátula).
 - **`ros_docker/`** — Dockerfile and host-side launch scripts.

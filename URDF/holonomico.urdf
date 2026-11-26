@@ -115,7 +115,7 @@
         <visual name="ME_Platfo2_sub1">
             <origin xyz="0.000000 0.000105 0.035887" rpy="-3.140586 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_ME_Platfo2_sub1_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_ME_Platfo2_sub1_vis_1.dae" />
             </geometry>
             <material name="ME_Platfo2_sub1_material">
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
@@ -127,7 +127,7 @@
         <visual name="ME_Platfo2_sub1">
             <origin xyz="0.000000 0.000105 0.035887" rpy="-3.140586 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_ME_Platfo2_sub1_vis_3.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_ME_Platfo2_sub1_vis_3.dae" />
             </geometry>
             <material name="ME_Platfo2_sub1_material">
                 <color rgba="1.000000 1.000000 1.000000 1.0" />
@@ -136,7 +136,7 @@
         <visual name="Rectangle">
             <origin xyz="0.281858 0.000389 -0.021434" rpy="1.485275 0.000000 1.571802" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Rectangle_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_Rectangle_vis_1.dae" />
             </geometry>
             <material name="Rectangle_material">
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
@@ -145,7 +145,7 @@
         <visual name="Hokuyo_URG_04LX_UG01_ROS_body">
             <origin xyz="0.273636 0.000000 0.063316" rpy="0.000000 0.000000 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Hokuyo_URG_04LX_UG01_ROS_body_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_Hokuyo_URG_04LX_UG01_ROS_body_vis_1.dae" />
             </geometry>
             <material name="Hokuyo_URG_04LX_UG01_ROS_body_material">
                 <color rgba="0.217647 0.217647 0.217647 1.0" />
@@ -154,7 +154,7 @@
         <visual name="Hokuyo_URG_04LX_UG01_ROS_body">
             <origin xyz="0.273636 0.000000 0.063316" rpy="0.000000 0.000000 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Hokuyo_URG_04LX_UG01_ROS_body_vis_2.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_Hokuyo_URG_04LX_UG01_ROS_body_vis_2.dae" />
             </geometry>
             <material name="Hokuyo_URG_04LX_UG01_ROS_body_material">
                 <color rgba="0.217647 0.217647 0.217647 1.0" />
@@ -163,7 +163,7 @@
         <visual name="Hokuyo_URG_04LX_UG01_ROS_body">
             <origin xyz="0.273636 0.000000 0.063316" rpy="0.000000 0.000000 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_Hokuyo_URG_04LX_UG01_ROS_body_vis_3.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_Hokuyo_URG_04LX_UG01_ROS_body_vis_3.dae" />
             </geometry>
             <material name="Hokuyo_URG_04LX_UG01_ROS_body_material">
                 <color rgba="1.000000 1.000000 0.111111 1.0" />
@@ -191,7 +191,7 @@
         <visual name="swedishWheel_rr">
             <origin xyz="-0.000006 0.000004 0.000000" rpy="-0.000000 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_rr_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_rr_vis_1.dae" />
             </geometry>
             <material name="swedishWheel_rr_material">
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
@@ -200,7 +200,7 @@
         <visual name="swedishWheel_rr">
             <origin xyz="-0.000006 0.000004 0.000000" rpy="-0.000000 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_rr_vis_2.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_rr_vis_2.dae" />
             </geometry>
             <material name="swedishWheel_rr_material">
                 <color rgba="1.000000 0.618298 0.265957 1.0" />
@@ -209,7 +209,7 @@
         <visual name="swedishWheel_rr">
             <origin xyz="-0.000006 0.000004 0.000000" rpy="-0.000000 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_rr_vis_3.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_rr_vis_3.dae" />
             </geometry>
             <material name="swedishWheel_rr_material">
                 <color rgba="0.358824 0.358824 0.358824 1.0" />
@@ -256,7 +256,7 @@
         <visual name="swedishWheel_rl">
             <origin xyz="-0.000009 -0.000001 0.000003" rpy="-2.948969 4.712375 2.948969" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_rl_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_rl_vis_1.dae" />
             </geometry>
             <material name="swedishWheel_rl_material">
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
@@ -265,7 +265,7 @@
         <visual name="swedishWheel_rl">
             <origin xyz="-0.000009 -0.000001 0.000003" rpy="-2.948969 4.712375 2.948969" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_rl_vis_2.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_rl_vis_2.dae" />
             </geometry>
             <material name="swedishWheel_rl_material">
                 <color rgba="1.000000 0.618298 0.265957 1.0" />
@@ -274,7 +274,7 @@
         <visual name="swedishWheel_rl">
             <origin xyz="-0.000009 -0.000001 0.000003" rpy="-2.948969 4.712375 2.948969" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_rl_vis_3.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_rl_vis_3.dae" />
             </geometry>
             <material name="swedishWheel_rl_material">
                 <color rgba="0.358824 0.358824 0.358824 1.0" />
@@ -342,7 +342,7 @@
         <visual name="swedishWheel_fl">
             <origin xyz="0.000002 -0.000005 0.000000" rpy="0.000000 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_fl_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_fl_vis_1.dae" />
             </geometry>
             <material name="swedishWheel_fl_material">
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
@@ -351,7 +351,7 @@
         <visual name="swedishWheel_fl">
             <origin xyz="0.000002 -0.000005 0.000000" rpy="0.000000 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_fl_vis_2.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_fl_vis_2.dae" />
             </geometry>
             <material name="swedishWheel_fl_material">
                 <color rgba="1.000000 0.618298 0.265957 1.0" />
@@ -360,7 +360,7 @@
         <visual name="swedishWheel_fl">
             <origin xyz="0.000002 -0.000005 0.000000" rpy="0.000000 -1.570796 0.000000" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_fl_vis_3.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_fl_vis_3.dae" />
             </geometry>
             <material name="swedishWheel_fl_material">
                 <color rgba="0.358824 0.358824 0.358824 1.0" />
@@ -407,7 +407,7 @@
         <visual name="swedishWheel_fr">
             <origin xyz="0.000078 -0.000012 0.000005" rpy="-2.981611 4.712313 2.981611" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_fr_vis_1.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_fr_vis_1.dae" />
             </geometry>
             <material name="swedishWheel_fr_material">
                 <color rgba="0.682353 0.682353 0.682353 1.0" />
@@ -416,7 +416,7 @@
         <visual name="swedishWheel_fr">
             <origin xyz="0.000078 -0.000012 0.000005" rpy="-2.981611 4.712313 2.981611" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_fr_vis_2.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_fr_vis_2.dae" />
             </geometry>
             <material name="swedishWheel_fr_material">
                 <color rgba="1.000000 0.618298 0.265957 1.0" />
@@ -425,7 +425,7 @@
         <visual name="swedishWheel_fr">
             <origin xyz="0.000078 -0.000012 0.000005" rpy="-2.981611 4.712313 2.981611" />
             <geometry>
-                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/nashe_swedishWheel_fr_vis_3.dae" />
+                <mesh filename="file:///root/ros2_ws/src/robotica/URDF/holonomico_swedishWheel_fr_vis_3.dae" />
             </geometry>
             <material name="swedishWheel_fr_material">
                 <color rgba="0.358824 0.358824 0.358824 1.0" />
