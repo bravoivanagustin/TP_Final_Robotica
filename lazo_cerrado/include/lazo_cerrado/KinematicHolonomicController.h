@@ -19,8 +19,8 @@ namespace robmovil
 //   ex_w = gx - x ; ey_w = gy - y ; eθ = normalize(gθ - θ)
 //   ex_b =  cosθ·ex_w + sinθ·ey_w
 //   ey_b = -sinθ·ex_w + cosθ·ey_w
-//   vx, vy = clamp_norm(kp_xy·ex_b, kp_xy·ey_b, vxy_max)
-//   wz     = clamp(kp_yaw·eθ, wz_max)
+//   vx = kp_xy·ex_b ; vy = kp_xy·ey_b
+//   wz = kp_yaw·eθ
 //
 // Feedback: TF map → base_link (cambiable a base_link_ekf vía param `base_frame`
 // cuando entre el módulo 3). Goal selection: FIXED para sanity checks, PURSUIT

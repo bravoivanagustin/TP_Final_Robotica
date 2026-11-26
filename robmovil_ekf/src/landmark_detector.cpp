@@ -5,11 +5,9 @@
 #include <cmath>
 #include <vector>
 
-using namespace robmovil;
+using namespace robmovil_ekf;
 
-// ---------------------------------------------------------------------------
 // Constructor
-// ---------------------------------------------------------------------------
 
 LandmarkDetector::LandmarkDetector()
   : Node("landmark_detector")
@@ -53,11 +51,9 @@ LandmarkDetector::LandmarkDetector()
       min_cluster_points_, max_cluster_points_, max_range_);
 }
 
-// ---------------------------------------------------------------------------
-// updateLaserTf
-// ---------------------------------------------------------------------------
+// update_laser_tf
 
-bool LandmarkDetector::updateLaserTf()
+bool LandmarkDetector::update_laser_tf()
 {
   try {
     auto tf_stamped = tf_buffer_->lookupTransform(
@@ -75,14 +71,12 @@ bool LandmarkDetector::updateLaserTf()
   }
 }
 
-// ---------------------------------------------------------------------------
 // on_laser_scan — callback principal
-// ---------------------------------------------------------------------------
 
 void LandmarkDetector::on_laser_scan(
     const sensor_msgs::msg::LaserScan::SharedPtr scan)
 {
-  if (!updateLaserTf()) return;
+  if (!update_laser_tf()) return;
 
   // Convertir puntos validos a cartesiano en frame robot_frame_
   std::vector<tf2::Vector3> cartesian;
@@ -110,14 +104,12 @@ void LandmarkDetector::on_laser_scan(
       "Scan recibido: %zu puntos validos en %s",
       cartesian.size(), robot_frame_.c_str());
 
-  clusterAndPublish(cartesian, scan->header.stamp);
+  cluster_and_publish(cartesian, scan->header.stamp);
 }
 
-// ---------------------------------------------------------------------------
-// clusterAndPublish — clustering secuencial y publicacion de /landmarks
-// ---------------------------------------------------------------------------
+// cluster_and_publish — clustering secuencial y publicacion de /landmarks
 
-void LandmarkDetector::clusterAndPublish(
+void LandmarkDetector::cluster_and_publish(
     const std::vector<tf2::Vector3>& pts,
     const builtin_interfaces::msg::Time& stamp)
 {
@@ -183,14 +175,12 @@ void LandmarkDetector::clusterAndPublish(
   RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
       "Landmarks detectados: %zu", landmarks_msg.landmarks.size());
 
-  publishMarkers(centroids, stamp);
+  publish_markers(centroids, stamp);
 }
 
-// ---------------------------------------------------------------------------
-// publishMarkers — MarkerArray en /landmark_markers
-// ---------------------------------------------------------------------------
+// publish_markers — MarkerArray en /landmark_markers
 
-void LandmarkDetector::publishMarkers(
+void LandmarkDetector::publish_markers(
     const std::vector<tf2::Vector3>& centroids,
     const builtin_interfaces::msg::Time& stamp)
 {

@@ -17,7 +17,7 @@ KinematicHolonomicController::KinematicHolonomicController()
 {
   // Parámetros de la ley de control.
   kp_xy_              = this->declare_parameter("kp_xy", 0.8);
-  kp_yaw_             = this->declare_parameter("kp_yaw", 1.5);
+  kp_yaw_             = this->declare_parameter("kp_yaw", 0.75);
   lookahead_distance_ = this->declare_parameter("lookahead_distance", 0.30);
   position_tolerance_ = this->declare_parameter("position_tolerance", 0.05);
   yaw_tolerance_      = this->declare_parameter("yaw_tolerance", 0.05);

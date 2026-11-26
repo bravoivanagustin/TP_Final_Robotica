@@ -20,7 +20,7 @@ MecanumOdometry::MecanumOdometry()
     x_(0), y_(0), theta_(0),
     ticks_initialized_(false)
 {
-  // Consigna §1.a: el simulador publica /robot/cmd_vel.
+  // Consigna §1.a: /robot/cmd_vel lo publica el controlador (o un driver a lazo abierto).
   twist_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
       "/robot/cmd_vel", rclcpp::QoS(10),
       std::bind(&MecanumOdometry::on_velocity_cmd, this, std::placeholders::_1));

@@ -1,11 +1,11 @@
-#pragma once
+#ifndef __ROBMOVIL_EKF_LANDMARK_DETECTOR_H__
+#define __ROBMOVIL_EKF_LANDMARK_DETECTOR_H__
 
 // LandmarkDetector: convierte /robot/front_laser/scan en /landmarks (range, bearing
 // en frame base_link). Detector stateless respecto al mapa — no conoce /posts.
 // Frame de entrada: front_laser. Frame de salida: base_link.
 
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/header.hpp>
 #include <builtin_interfaces/msg/time.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <robmovil_msgs/msg/landmark_array.hpp>
@@ -17,7 +17,7 @@
 #include <vector>
 #include <string>
 
-namespace robmovil
+namespace robmovil_ekf
 {
 
 class LandmarkDetector : public rclcpp::Node
@@ -30,12 +30,12 @@ public:
 
 private:
 
-  bool updateLaserTf();
+  bool update_laser_tf();
 
-  void clusterAndPublish(const std::vector<tf2::Vector3>& pts,
+  void cluster_and_publish(const std::vector<tf2::Vector3>& pts,
                          const builtin_interfaces::msg::Time& stamp);
 
-  void publishMarkers(const std::vector<tf2::Vector3>& centroids,
+  void publish_markers(const std::vector<tf2::Vector3>& centroids,
                       const builtin_interfaces::msg::Time& stamp);
 
   // Comunicacion ROS 2
@@ -62,4 +62,6 @@ private:
   int max_cluster_points_;
 };
 
-}  // namespace robmovil
+}  // namespace robmovil_ekf
+
+#endif  // __ROBMOVIL_EKF_LANDMARK_DETECTOR_H__
