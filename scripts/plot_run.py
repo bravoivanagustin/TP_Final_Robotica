@@ -365,39 +365,25 @@ def extract_wheel_cmd(entries):
 
 def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None, ekf=None, map_odom=None):
     ts, x, y, yaw, vx, vy, wz = odom
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.plot(x, y, label="odometría", color="C0")
-    if ekf is not None and len(ekf["x"]):
-        ax.plot(ekf["x"], ekf["y"], label="EKF", color="C1", linewidth=1.2)
-    if len(x):
-        ax.scatter([x[0]], [y[0]], marker="o", label="inicio")
-        ax.scatter([x[-1]], [y[-1]], marker="x", label="fin")
+    fig, ax = plt.subplots(figsize=(6.5, 7))
 
-    # Todos los puntos que participan en el rango visible (para calcular el bbox cuadrado).
+    # Colores fijos en todas las corridas: referencia gris, odometría azul,
+    # ground truth verde, EKF naranja (punteado, arriba de todo porque pisa al GT).
+    C_REF, C_ODOM, C_GT, C_EKF = "0.45", "C0", "C2", "C1"
+
     xs_all = [np.asarray(x)]
     ys_all = [np.asarray(y)]
 
-    # Overlay del ground truth (si el bag incluyó /tf con base_link_gt). Es la pose
-    # real que conoce el simulador — la brecha con la odometría es exactamente el
-    # drift acumulado por integración, que motiva el módulo 3 (EKF).
-    if gt is not None:
-        ts_gt, xg, yg, _ = gt
-        if len(xg):
-            ax.plot(xg, yg, label="ground truth (sim)", color="C2", linewidth=1.2)
-            xs_all.append(np.asarray(xg))
-            ys_all.append(np.asarray(yg))
-
-    # Overlay de la referencia de módulo 2 (si está disponible).
+    # Referencia: trayectoria publicada (módulo 2/3) o círculo analítico (módulo 1).
     if ref_traj is not None:
         xr, yr, _ = ref_traj
         if len(xr):
-            ax.plot(xr, yr, "--", label="referencia (/robot/trajectory)")
+            ax.plot(xr, yr, "--", color=C_REF, linewidth=1.2, label="referencia", zorder=1)
             xs_all.append(np.asarray(xr))
             ys_all.append(np.asarray(yr))
     else:
-        # Overlay analítico circular: círculo de radio R = vx/wz arrancando en el origen
-        # de `odom` con θ = 0 (giro CCW ⇒ centro en (0, R)); después se lleva a `map`
-        # con el mismo offset map→odom que la odometría.
+        # Círculo de radio R = vx/wz arrancando en el origen de `odom` con θ = 0
+        # (centro en (0, R)); se lleva a `map` con el offset map→odom del sim.
         tray = manifest.get("trayectoria") or {}
         if tray.get("tipo") == "circular":
             p = tray.get("parametros") or {}
@@ -412,13 +398,29 @@ def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None, ekf=None, ma
                     dx, dy, dyaw = map_odom
                     c, s = math.cos(dyaw), math.sin(dyaw)
                     x_ana, y_ana = dx + c * x_ana - s * y_ana, dy + s * x_ana + c * y_ana
-                ax.plot(x_ana, y_ana, "--", label=f"circular analítico R={R:.3f} m")
+                ax.plot(x_ana, y_ana, "--", color=C_REF, linewidth=1.2,
+                        label=f"círculo teórico (R = {abs(R):.2f} m)", zorder=1)
                 xs_all.append(x_ana)
                 ys_all.append(y_ana)
 
-    # Bbox cuadrado — evita que un canal chico (ej. strafing puro: Δx≈0) se estire
-    # visualmente. Tomamos el centro del rango total y el semi-lado como el mayor de
-    # (Δx, Δy)/2, con 10% de padding y un mínimo de 0.5 m para casos degenerados.
+    ax.plot(x, y, color=C_ODOM, linewidth=1.5, label="odometría", zorder=2)
+
+    # Ground truth: pose real del simulador (base_link_gt).
+    if gt is not None:
+        ts_gt, xg, yg, _ = gt
+        if len(xg):
+            ax.plot(xg, yg, color=C_GT, linewidth=1.5, label="real (ground truth)", zorder=3)
+            xs_all.append(np.asarray(xg))
+            ys_all.append(np.asarray(yg))
+
+    if ekf is not None and len(ekf["x"]):
+        ax.plot(ekf["x"], ekf["y"], ":", color=C_EKF, linewidth=2.0, label="EKF", zorder=4)
+
+    if len(x):
+        ax.scatter([x[0]], [y[0]], marker="o", s=45, color="k", label="inicio", zorder=5)
+
+    # Bbox cuadrado (evita que un recorrido angosto, ej. strafing, se estire),
+    # con 10% de margen y un mínimo de 0.5 m.
     x_all = np.concatenate(xs_all)
     y_all = np.concatenate(ys_all)
     half = 0.5
@@ -432,29 +434,26 @@ def plot_xy(odom, manifest, out_path: Path, ref_traj=None, gt=None, ekf=None, ma
         ax.set_xlim(xc - half, xc + half)
         ax.set_ylim(yc - half, yc + half)
 
-    # Flechas de heading (yaw) muestreadas a lo largo del recorrido — equivalente al
-    # arrow de /odometry en RViz. Longitud proporcional al tamaño del plot para que se
-    # vean bien tanto en un strafing de 1 m como en un cuadrado de 4 m.
+    # Unas pocas flechas de orientación sobre la odometría (como el arrow de RViz).
     if len(x) > 1:
-        n_arrows = min(15, len(x))
-        idx = np.linspace(0, len(x) - 1, n_arrows, dtype=int)
-        arrow_len = 0.08 * half  # 8% del semi-lado del plot
+        n_arrows = min(8, len(x))
+        idx = np.linspace(0, len(x) - 1, n_arrows + 1, dtype=int)[:-1]
+        arrow_len = 0.07 * half
         ax.quiver(
-            x[idx], y[idx],
-            np.cos(yaw[idx]), np.sin(yaw[idx]),
+            x[idx], y[idx], np.cos(yaw[idx]), np.sin(yaw[idx]),
             angles="xy", scale_units="xy", scale=1.0 / arrow_len,
-            width=0.008, color="C3", alpha=0.85, label="heading (yaw)",
-            zorder=3,
+            width=0.006, color=C_ODOM, alpha=0.8, zorder=2,
         )
 
     ax.set_xlabel("x [m]")
     ax.set_ylabel("y [m]")
     ax.set_aspect("equal")
-    ax.grid(True)
-    ax.legend()
-    ax.set_title(f"Trayectoria (x,y) — {manifest.get('slug', '?')}")
+    ax.grid(True, alpha=0.4)
+    ax.set_title(f"Trayectoria (x, y) — {manifest.get('slug', '?')}")
+    # Leyenda debajo del gráfico para no tapar el recorrido.
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=3, frameon=False)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=120)
+    fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
