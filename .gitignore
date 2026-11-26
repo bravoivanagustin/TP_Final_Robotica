@@ -14,3 +14,9 @@ scripts/_tmp_*.py
 
 # Notas personales — no versionar. docs/ sí va al repo, docs_locales/ no.
 docs_locales/
+
+# Auxiliares de LaTeX
+informe/*.aux
+informe/*.log
+informe/*.out
+informe/*.toc

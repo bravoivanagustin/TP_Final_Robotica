@@ -107,7 +107,7 @@ Resolución del encoder & -- & 500 ticks/rev \\
 
 \subsection{Cinemática inversa (control de ruedas)}
 
-Se implementó la cinemática inversa propuesta en Taheri et al. \emph{Kinematic Model Of Four Mecanum Wheeled Mobile Robot}~\cite{taheri2015} (ecuación 20) que, dada la velocidad deseada del robot en su propio marco, calcula la velocidad angular que debe tener cada rueda:
+Se implementó la cinemática inversa propuesta en Taheri et al. \emph{Kinematic Model of a Four Mecanum Wheeled Mobile Robot}~\cite{taheri2015} (ecuación 20) que, dada la velocidad deseada del robot en su propio marco, calcula la velocidad angular que debe tener cada rueda:
 
 \begin{equation}
 \begin{bmatrix}\omega_{FL}\\ \omega_{FR}\\ \omega_{RL}\\ \omega_{RR}\end{bmatrix}
@@ -128,7 +128,7 @@ El nodo recibe el comando \texttt{geometry\_msgs/Twist} por el tópico \texttt{/
 
 \subsection{Cinemática directa (odometría)}
 
-Para estimar la pose del robot se implementó el modelo directo propuesto en Taheri et al. \emph{Kinematic Model Of Four Mecanum Wheeled Mobile Robot}~\cite{taheri2015} (ecuaciones 21 a 24) que, con los giros de las ruedas, permite calcular la velocidad del robot. 
+Para estimar la pose del robot se implementó el modelo directo propuesto en Taheri et al. \emph{Kinematic Model of a Four Mecanum Wheeled Mobile Robot}~\cite{taheri2015} (ecuaciones 21 a 24) que, con los giros de las ruedas, permite calcular la velocidad del robot. 
 
 El nodo lee los ticks de los encoders de cada rueda por el tópico \texttt{/robot/encoders}. A partir de dos lecturas consecutivas, se utiliza la variación de ticks de cada rueda $i$ para calcular la distancia recorrida: 
 
@@ -345,7 +345,7 @@ El controlador lleva al robot hacia una pose objetivo. Si esa pose fuera el últ
 
 \begin{itemize}
     \item Al comenzar, se toma como punto de partida el waypoint más cercano al robot.
-    \item En cada iteración, se recorre la lista desde el último objetivo y se elige el primer waypoint que está a más de una distancia de anticipación (\emph{lookahead}) del robot. Su valor se elige en la Sección~\ref{sec:lazo_exp}.
+    \item En cada iteración, se recorre la lista desde el último objetivo y se elige el primer waypoint que está a más de una distancia de anticipación (\emph{lookahead}) del robot. Se utilizó un \emph{lookahead} de $0.30$~m.
     \item Cuando ya no quedan waypoints más allá del \emph{lookahead}, el objetivo es el último punto de la trayectoria. La trayectoria se da por terminada cuando el robot está a menos de $0.05$~m de ese punto y su orientación difiere en menos de $0.05$~rad.
 \end{itemize}
 
@@ -362,19 +362,21 @@ En la Tabla~\ref{tab:barrido} se resumen los resultados. Las columnas $d$, $e_p$
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{ccccccccc}
+\begin{tabular}{cccccccc}
 \toprule
-$k_{p,xy}$ & $k_{p,yaw}$ & Duración [s] & $d$ medio [m] & $d$ máx. [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{p,tray}$ [cm] & $\bar{e}_{\theta,tray}$ \\
+ & & & \multicolumn{3}{c}{Robot real} & \multicolumn{2}{c}{Pose estimada} \\
+\cmidrule(lr){4-6} \cmidrule(lr){7-8}
+$k_{p,xy}$ & $k_{p,yaw}$ & Duración [s] & $d$ medio [m] & $e_p$ final [m] & $e_\theta$ final & $\bar{e}_{p,tray}$ [cm] & $\bar{e}_{\theta,tray}$ \\
 \midrule
-$0.4$ & $1.5$ & $123$ & $0.20$ & $0.54$ & $0.90$ & $19.9^\circ$ & $1.3$ & $5.3^\circ$ \\
-$0.8$ & $1.5$ & $64$ & $0.22$ & $0.56$ & $0.90$ & $20.8^\circ$ & $1.5$ & $3.4^\circ$ \\
-$1.6$ & $1.5$ & $38$ & $0.42$ & $1.13$ & $2.12$ & $49.4^\circ$ & $2.3$ & $1.4^\circ$ \\
+$0.4$ & $1.5$ & $123$ & $0.20$ & $0.90$ & $19.9^\circ$ & $1.3$ & $5.3^\circ$ \\
+$0.8$ & $1.5$ & $64$ & $0.22$ & $0.90$ & $20.8^\circ$ & $1.5$ & $3.4^\circ$ \\
+$1.6$ & $1.5$ & $38$ & $0.42$ & $2.12$ & $49.4^\circ$ & $2.3$ & $1.4^\circ$ \\
 \midrule
-$0.8$ & $0.75$ & $65$ & $0.22$ & $0.55$ & $0.88$ & $19.5^\circ$ & $1.5$ & $0.7^\circ$ \\
-$0.8$ & $3.0$ & $65$ & $0.23$ & $0.59$ & $1.00$ & $22.9^\circ$ & $1.4$ & $5.3^\circ$ \\
+$\mathbf{0.8}$ & $\mathbf{0.75}$ & $\mathbf{65}$ & $\mathbf{0.22}$ & $\mathbf{0.88}$ & $\mathbf{19.5^\circ}$ & $\mathbf{1.5}$ & $\mathbf{0.7^\circ}$ \\
+$0.8$ & $3.0$ & $65$ & $0.23$ & $1.00$ & $22.9^\circ$ & $1.4$ & $5.3^\circ$ \\
 \bottomrule
 \end{tabular}
-\caption{Resultados de las corridas con distintas constantes.}
+\caption{Resultados de las corridas con distintas constantes. En negrita, la configuración elegida.}
 \label{tab:barrido}
 \end{table}
 
@@ -856,7 +858,7 @@ Con el controlador ocurre algo similar, dado que sigue correctamente a la pose e
 
 El EKF resuelve este problema, ya que corrige la estimación cada vez que el láser detecta postes. Con velocidades constantes, el error de la pose estimada bajó de $11$~cm con la odometría a $1$~cm con el EKF, y al utilizarlo como retroalimentación, el robot real siguió al cuadrado con una distancia media de $1.6$~cm, contra $21.5$~cm con la odometría, y terminó a $5$~cm del punto de llegada, contra $84$~cm. A su vez, se vio que la mejora depende de las observaciones, de manera que en los tramos en los que el láser no ve postes el filtro solo predice y la incertidumbre crece.
 
-El principal problema que se encontró es el deslizamiento de las ruedas, que la odometría no puede medir y el controlador no puede corregir por sí solo. Si bien el EKF lo resuelve mientras el láser ve postes, en los tramos en los que no ve ninguno la estimación vuelve a depender de la odometría y su error crece, por lo que una posible mejora sería agregar más postes en el recorrido, o un sensor que permita medir el giro del robot sin depender de las ruedas. A su vez, el robot recorta las esquinas del cuadrado hasta $14$~cm, por anticipar el objetivo, lo que se podría reducir disminuyendo el \emph{lookahead} cerca de los vértices. Por último, de cada configuración del controlador se realizó una sola corrida, por lo que repetirlas permitiría confirmar que las diferencias entre las constantes no se deben a la variabilidad entre corridas.
+El principal problema que se encontró es el deslizamiento de las ruedas, que la odometría no puede medir y el controlador no puede corregir por sí solo. Si bien el EKF lo resuelve mientras el láser ve postes, en los tramos en los que no ve ninguno la estimación vuelve a depender de la odometría y su error crece, por lo que una posible mejora sería agregar un sensor que permita medir el giro del robot sin depender de las ruedas. A su vez, el robot recorta las esquinas del cuadrado hasta $14$~cm, por anticipar el objetivo, lo que se podría reducir disminuyendo el \emph{lookahead} cerca de los vértices. Por último, de cada configuración del controlador se realizó una sola corrida, por lo que repetirlas permitiría confirmar que las diferencias entre las constantes no se deben a la variabilidad entre corridas.
 
 De esta forma, se logró que el robot siga la trayectoria de referencia de manera precisa, como se propuso al comienzo del trabajo, y se vio que para lograrlo no alcanza con un buen controlador, sino que también es necesario contar con una buena estimación de la pose.
 
